@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Underrated Cities</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --ink: #1a1a1a;
+    --paper: #fafaf8;
+    --muted: #6b6b6b;
+    --accent: #3b5d8a;
+    --border: #e2e0dc;
+    --panel-width: 420px;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+  }
+
+  /* --- Side panel --- */
+  #panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: var(--panel-width);
+    height: 100vh;
+    background: var(--paper);
+    border-left: 1px solid var(--border);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.06);
+  }
+
+  #panel.open { transform: translateX(0); }
+
+  #panel-close-row {
+    padding: 12px 16px 0;
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+
+  #close-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 4px 8px;
+    line-height: 1;
+    border-radius: 4px;
+  }
+
+  #close-btn:hover { background: var(--border); color: var(--ink); }
+
+  #panel-scroll {
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  #panel-image {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    display: block;
+  }
+
+  #panel-image.hidden { display: none; }
+
+  #panel-header {
+    padding: 20px 28px 0;
+  }
+
+  #panel-header h2 {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  #panel-header .country {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  #panel-body {
+    padding: 16px 28px 40px;
+  }
+
+  #panel-body p {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 16px;
+    line-height: 1.65;
+    margin-bottom: 14px;
+    color: var(--ink);
+  }
+
+  #panel-body p:last-child { margin-bottom: 0; }
+
+  #panel-body a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-color: rgba(59,93,138,0.3);
+    text-underline-offset: 2px;
+  }
+
+  #panel-body a:hover { text-decoration-color: var(--accent); }
+
+  /* --- Title overlay --- */
+  #title-bar {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 900;
+    background: var(--paper);
+    padding: 14px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border: 1px solid var(--border);
+  }
+
+  #title-bar h1 {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  #title-bar .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  #title-bar .subtitle a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  #title-bar .subtitle a:hover { color: var(--accent); }
+
+  /* --- City list overlay --- */
+  #city-list-toggle {
+    position: absolute;
+    bottom: 24px;
+    left: 20px;
+    z-index: 900;
+    background: var(--paper);
+    padding: 10px 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  #city-list-toggle:hover { background: #f0efec; }
+
+  #dart-btn {
+    position: absolute;
+    bottom: 24px;
+    left: 176px;
+    z-index: 900;
+    background: var(--paper);
+    padding: 10px 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  #dart-btn:hover { background: #f0efec; }
+
+  #city-list {
+    position: absolute;
+    bottom: 68px;
+    left: 20px;
+    z-index: 900;
+    background: var(--paper);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    border: 1px solid var(--border);
+    max-height: 60vh;
+    overflow-y: auto;
+    width: 260px;
+    display: none;
+  }
+
+  #city-list.open { display: block; }
+
+  #city-list ul { list-style: none; padding: 8px 0; }
+
+  #city-list li {
+    padding: 8px 18px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1.4;
+    transition: background 0.15s;
+  }
+
+  #city-list li:hover { background: #f0efec; }
+
+  #city-list li .list-country {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  #counter {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 1px 7px;
+    border-radius: 10px;
+    margin-left: 6px;
+    vertical-align: 1px;
+  }
+
+  /* --- Custom marker --- */
+  .city-marker {
+    width: 12px;
+    height: 12px;
+    background: var(--accent);
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    transition: transform 0.15s;
+  }
+
+  .city-marker:hover {
+    transform: scale(1.4);
+    background: #2a4a70;
+  }
+
+  .city-marker.active {
+    transform: scale(1.6);
+    background: #c4432e;
+    border-color: white;
+    box-shadow: 0 0 0 4px rgba(196,67,46,0.3), 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  /* --- Leaflet overrides --- */
+  .leaflet-top.leaflet-right {
+    top: 20px;
+    right: 20px;
+  }
+
+  .leaflet-top.leaflet-right .leaflet-control:first-child {
+    margin-top: 0;
+  }
+
+  .leaflet-control-zoom {
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+    overflow: hidden;
+  }
+
+  .leaflet-control-zoom a {
+    background: var(--paper) !important;
+    color: var(--ink) !important;
+    width: 34px !important;
+    height: 34px !important;
+    line-height: 34px !important;
+    font-size: 16px !important;
+  }
+
+  .leaflet-control-zoom a:hover {
+    background: #f0efec !important;
+  }
+
+  .leaflet-control-attribution {
+    font-size: 10px !important;
+    background: rgba(250,250,248,0.85) !important;
+  }
+
+  /* --- Mobile --- */
+  @media (max-width: 640px) {
+    :root { --panel-width: 100vw; }
+
+    #title-bar { top: 12px; left: 12px; padding: 10px 14px; }
+    #title-bar h1 { font-size: 17px; }
+    .leaflet-top.leaflet-right { top: 12px; right: 12px; }
+    #city-list-toggle { bottom: 16px; left: 12px; }
+    #dart-btn { bottom: 16px; left: auto; right: 12px; }
+    #city-list { bottom: 56px; left: 12px; width: calc(100vw - 24px); }
+    #panel-header { padding: 16px 20px 0; }
+    #panel-body { padding: 12px 20px 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="title-bar">
+  <h1>Underrated Cities</h1>
+  <div class="subtitle">by <a href="https://minaal.com" target="_blank" rel="noopener">Minaal</a></div>
+</div>
+
+<button id="city-list-toggle">
+  All cities <span id="counter"></span>
+</button>
+
+<button id="dart-btn">
+  &#127919; Throw a dart
+</button>
+
+<div id="city-list">
+  <ul id="city-list-ul"></ul>
+</div>
+
+<div id="map"></div>
+
+<div id="panel">
+  <div id="panel-close-row">
+    <button id="close-btn">&times;</button>
+  </div>
+  <div id="panel-scroll">
+    <img id="panel-image" class="hidden" src="" alt="" />
+    <div id="panel-header">
+      <h2 id="panel-city"></h2>
+      <div class="country" id="panel-country"></div>
+    </div>
+    <div id="panel-body"></div>
+  </div>
+</div>
+
+<script>
+const CITIES = [
+  {
+    "name": "Eskişehir",
+    "country": "Turkey",
+    "lat": 39.7767,
+    "lng": 30.5206,
+    "blurb_html": "<p>If you already know and love Istanbul's bohemian Moda district, you're sure to appreciate <strong>Eskişehir</strong> – a university city buzzing with cafe culture, nightlife, and (by Turkish standards) <strong>outright hedonism</strong>.</p><p>But it's not all <em>Sailing to Byzantium</em>. Even if partying isn't your thing, Eskişehir has something for you – from tree-lined canals in summer, to dramatic snow-clad peaks in winter.</p><p>Thanks to its manageable size and efficient public transport, it's considered one of Turkey's<strong> most liveable cities</strong>.</p><p><strong>Our tip:</strong> if you're a history enthusiast, do the the day trip to Yazılıkaya, part of the breathtaking <a href=\"https://artofwayfaring.com/destinations/the-phrygian-valley/\" target=\"_blank\" rel=\"noopener\">Phrygian Valley.</a></p>",
+    "image": "images/eskişehir.jpeg",
+    "slug": "eskişehir"
+  },
+  {
+    "name": "Andong",
+    "country": "South Korea",
+    "lat": 36.5684,
+    "lng": 128.7294,
+    "blurb_html": "<p>Some say that to find Korea's soul, you need to look beyond Seoul. (<em>Editor's Note: we apologize</em>).</p><p>One of the strongest contenders for that soul is <strong>Andong</strong>, a compact, ancient riverside city in the country's mountainous hinterland.</p><p>Andong's most famous and alluring attraction is the nearby village of <strong>Hahoe</strong> (pictured), a well-preserved testament to <strong>Confucian learning </strong>and <strong>Joseon-era architecture</strong>. Perhaps the best example of those interwoven elements is <a href=\"https://www.tripadvisor.com/Attraction_Review-g1074321-d21294753-Reviews-Byeongsan_Seowon-Andong_Gyeongsangbuk_do.html\" target=\"_blank\" rel=\"noopener\">Byeongsan Seowon</a>, a 400-year-old Confucian academy. <strong> </strong> <strong>Our tip:</strong> if you find yourself yearning for the bright lights and bustle of Hongdae, scratch that itch at least a little by heading to one of Andong's <a href=\"https://www.andong.go.kr/en/contents.do?mId=0403000000\" target=\"_blank\" rel=\"noopener\">traditional markets</a>.</p>",
+    "image": "images/andong.jpeg",
+    "slug": "andong"
+  },
+  {
+    "name": "Nantes",
+    "country": "France",
+    "lat": 47.2184,
+    "lng": -1.5536,
+    "blurb_html": "<p>If you haven't heard much about <strong>Nantes</strong>, it might surprise you to hear it's the 6th biggest city in France – and to hear that it's <em>flippin' sweet</em>.</p><p>Nobody talks much about it, but you get the endless street brunches and tiled wanderings of Paris, <strong>without the madness.</strong></p><p>Not to mention, it's a perfect launching pad for exploring Bretagne (Brittany), possibly the most underrated <em>region</em> of France. If you're lucky, you'll even end up invited to a <a href=\"https://ich.unesco.org/en/RL/fest-noz-festive-gathering-based-on-the-collective-practice-of-traditional-dances-of-brittany-00707\" target=\"_blank\" rel=\"noopener\">fest-noz</a>.</p><p><strong>Our tip: </strong>as much as we'd love to avoid saying the elephant, it's <a href=\"https://www.lesmachines-nantes.fr/en/discover/the-grand-elephant/\" target=\"_blank\" rel=\"noopener\">the elephant.</a></p>",
+    "image": "images/nantes.jpeg",
+    "slug": "nantes"
+  },
+  {
+    "name": "Asunción",
+    "country": "Paraguay",
+    "lat": -25.2637,
+    "lng": -57.5759,
+    "blurb_html": "<p>How do we know <strong>Asunción</strong> is underrated?</p><p>Is it that the top Google result says (rightly or wrongly) <em>\"not known for any natural or cultural landmarks... no seaside, no mountains... no specifically known culture like its bigger neighbours\"</em>?</p><p>No, it's more that when we turned up at the <a href=\"https://maps.app.goo.gl/k73qXnMyuaL1KpFZ7\" target=\"_blank\" rel=\"noopener\">Paraguayan Embassy</a> in Buenos Aires, the *visa officer employed by the Paraguayan Government* asked, in obvious disbelief: <em>\"why would you go to Paraguay?!\"</em></p><p>And look. It's not Paris or whatever.</p><p>But if you meet a bartender in Argentina who invites you to visit him in Asunción, take the offer. You'll get saved from a <strong>shakedown at border control</strong> by a quick phone call, and it only gets better from there.</p><p><strong>Our tip:</strong> take a simple, slow stroll down <a href=\"https://simonsparaguay.com/walking-tour-of-asuncion-old-town/\" target=\"_blank\" rel=\"noopener\">Calle Palma</a> and follow your nose to a dark nook in a local coffee house.</p>",
+    "image": "images/asunción.jpeg",
+    "slug": "asunción"
+  },
+  {
+    "name": "Cologne",
+    "country": "Germany",
+    "lat": 50.9375,
+    "lng": 6.9603,
+    "blurb_html": "<p>We're not saying nobody's ever been to <strong>Cologne</strong>. But when's the last time someone said to you \"<em>this summer I'm going to fulfil my lifelong dream to visit Cologne</em>\"?</p><p>For that reason alone, the city is underrated. Because it's <strong>awesome.</strong></p><p>Whether you're the <a href=\"https://www.cologne-tourism.com/experiences-lifestyle/lifestyle/kiosk-culture\" target=\"_blank\" rel=\"noopener\">Büdchen Crawl</a> type of visitor, a <a href=\"https://www.kolbhalle.de/\" target=\"_blank\" rel=\"noopener\">Kolbhalle</a> type, or a <a href=\"https://www.claudius-therme.de/en/\" target=\"_blank\" rel=\"noopener\">Claudius Therme</a> type, or just a \"walk around aimlessly\" type, Cologne's got you.</p><p><strong>Our tip:</strong> Brazil ain't the only place with <a href=\"https://en.wikipedia.org/wiki/Cologne_Carnival\" target=\"_blank\" rel=\"noopener\">Carnival</a>, and Colognians know how to party. The last person we saw, before retiring for the night, was a <strong>giant carrot</strong> eating an only-slightly-less-giant kebab.</p>",
+    "image": "images/cologne.jpeg",
+    "slug": "cologne"
+  },
+  {
+    "name": "Pretoria",
+    "country": "South Africa",
+    "lat": -25.7479,
+    "lng": 28.2293,
+    "blurb_html": "<p>Ok, we should say at the outset that you <em>do</em> need to be careful <strong>​</strong>when visiting South Africa in general – and that rule includes <strong>Pretoria</strong>. However, since the crime rate includes white collar crime like corruption, and Pretoria is the home of government... well, yes.</p><p>Throat-clearing out of the way, Pretoria offers a lot more than you might expect. It's pleasant enough to explore the city's <strong>leafy, jacaranda-lined streets</strong>, and what has to be one of the <a href=\"https://www.pretoriazoo.org/\" target=\"_blank\" rel=\"noopener\">world's best zoos</a>. But you'll also want to make time to visit the nearby resort town of <strong>Hartbeespoort</strong>, as well as <strong>Sun City</strong> and <strong>Pilanesberg National Park</strong>.</p><p><strong>Our tip:</strong> visit Pretoria Boeremark, the lively local <strong>farmer's market</strong>, on Saturday morning. Try to be there by sunrise!</p>",
+    "image": "images/pretoria.jpeg",
+    "slug": "pretoria"
+  },
+  {
+    "name": "Nouméa",
+    "country": "New Caledonia",
+    "lat": -22.2558,
+    "lng": 166.4505,
+    "blurb_html": "<p>Even among Kiwis and Aussies, for whom the French territory is a short flight away, New Caledonia <strong>​</strong>doesn't get nearly as much attention as fellow Pacific destinations Fiji and Rarotonga.</p><p><strong>Nouméa</strong> combines the charms of a provincial French capital with a spectacular, tropical Pacific island setting. After starting the day with a <em>petit déjeuner</em> of fresh baguette and Époisses, wander down to Baie des Citrons and take a dip in the glittering ocean. Later, sunburned and salty, head to <a href=\"http://Ouen Toro Hill\" target=\"_blank\" rel=\"noopener\">La Gavotte</a> for some of the best Breton <strong>crêpes and galettes</strong> this side of the equator.</p><p>If you get sick of all the windsurfing and standup paddle boarding – what a life – there are <strong>excellent hikes in the mountains </strong>behind the city. For something a little easier, you could start with Ouen Toro Hill which rewards you with panoramic views of downtown.</p><p><strong>Our tip:</strong> don't miss the <a href=\"https://nz.newcaledonia.travel/destination-new-caledonia/noumea/tjibaou-cultural-centre/\" target=\"_blank\" rel=\"noopener\">Tjibaou Cultural Centre</a>, which offers a window into the indigenous Kanak culture, as well as Kanaks' long struggle for independence.</p>",
+    "image": "images/nouméa.jpeg",
+    "slug": "nouméa"
+  },
+  {
+    "name": "Byblos/Jbeil",
+    "country": "Lebanon",
+    "lat": 34.1215,
+    "lng": 35.648,
+    "blurb_html": "<p>Lebanon has no shortage of ancient coastal cities that predate the conquests of Alexander the Great – but most of them are spring chickens compared to <strong>Byblos</strong>, which is one of the <strong>oldest continuously inhabited cities in the world</strong>.</p><p>If you love history, you won't need much persuading to visit. It's got neolithic dwellings, a Bronze Age royal necropolis, the ruins of a Persian fortress, a well-preserved Roman amphitheatre, and an <strong>intact Crusader citadel</strong> – all within walking distance from one another.</p><p>But even if you <em>hate</em> history, it isn't the only itch that Byblos can scratch. It's super walkable, with a relaxed atmosphere, fresh sea breezes from the Med, and <strong>plenty of great food and drink</strong>. And unlike some other cities in Lebanon, there's a general sense of social harmony and peaceful coexistence across varied groups.</p><p><strong>Our tip:</strong> try the sesame cookies at <a href=\"https://www.facebook.com/fornabouassaf/\" target=\"_blank\" rel=\"noopener\">Forn Abou Assaf</a>.</p>",
+    "image": "images/byblosjbeil.jpeg",
+    "slug": "byblosjbeil"
+  },
+  {
+    "name": "Hobart",
+    "country": "Australia",
+    "lat": -42.8821,
+    "lng": 147.3272,
+    "blurb_html": "<p>Relatively few Aussies visit Tasmania, but the ones who do are pretty unanimous: Tassie's the <strong>most underrated spot</strong> on the continent.</p><p>And the natural starting point for Tasmania is <strong>Hobart</strong>.</p><p>Small enough to be walkable, interesting enough to justify the trip, and an accessible gateway to <strong>truly wild</strong> nature.</p><p>But you don't need to go far to explore Tassie: the hiking creeps right up the to the edge of the city (and we have <a href=\"https://hobartcc.maps.arcgis.com/apps/MapSeries/index.html?appid=21a5bc3b6fec454a9ca32ad51e923947\" target=\"_blank\" rel=\"noopener\">the maps</a> to prove it).</p><p><strong>Our tip:</strong> the island's bigger than it looks on a map – you try looking big standing beside the Australian mainland!</p>",
+    "image": "images/hobart.jpeg",
+    "slug": "hobart"
+  },
+  {
+    "name": "Bergamo",
+    "country": "Italy",
+    "lat": 45.6983,
+    "lng": 9.6773,
+    "blurb_html": "<p>You've probably seen \"Milan Bergamo Airport\" on your boarding pass and assumed <strong>Bergamo</strong> was, y'know, <em>part of Milan.</em></p><p>It is not. It is 50 kilometers away. And it is *distinctly* underrated.</p><p>Bergamo is actually two cities stacked on top of each other: medieval Città Alta perched on a hill behind massive Venetian walls, connected by a <strong>century-old funicular</strong> to the modern Città Bassa below. The upper town was named a UNESCO World Heritage site yet somehow escaped being turned into an open-air tourist trap, which means you get Renaissance architecture, locals going about their non-tourism-related business, and restaurants serving food they'd eat themselves rather than the greatest hits of Italian clichés.</p><p>Fun fact: this is where <strong>stracciatella gelato</strong> was invented in 1961. It's also a UNESCO Creative City for cheese, with the province boasting nine PDO-certified varieties.</p><p><strong>Our tip:</strong> skip the ubiquitous carbonara and order <strong>casoncelli alla bergamasca</strong> at Il Circolino or Trattoria Parieti. These meat-filled pasta parcels with butter and sage are gloooooorious.</p>",
+    "image": "images/bergamo.jpeg",
+    "slug": "bergamo"
+  },
+  {
+    "name": "Port Louis",
+    "country": "Mauritius",
+    "lat": -20.1609,
+    "lng": 57.5012,
+    "blurb_html": "<p>Let's be honest: <strong>Port Louis</strong> is hot, sticky, traffic-clogged, and not <em>particularly</em> photogenic (the spot above is a short drive up the coast).</p><p>But that's precisely why it's worth visiting.</p><p>Because tucked between those chaotic streets and colonial-era buildings is the <strong>actual soul</strong> of Mauritius. Not the manicured resort version where staff rake the beach every morning and cocktails appear on command – the real, messy, deeply multicultural version.</p><p>French colonial architecture sits next to Chinese shophouses. The ornate Jummah Mosque (built in the 1850s) shares the skyline with modern glass towers. Central Market buzzes with vendors selling everything from fresh tropical fruit to <strong>mysterious herbal remedies</strong>, while Chinatown hums with steaming dumplings and sizzling woks.</p><p>Port Louis isn't always comfortable. You'll sweat. You might get lost. But if your entire Mauritius experience consists of a beachfront resort and organized excursions, you've basically been to a very pretty version of <strong>nowhere in particular</strong>.</p><p><strong>Our tip:</strong> join the queue (there's always a queue, but this one is worth it) at <strong>Dalpuri Maraz</strong> on Bourbon Street for dholl puri – Mauritius's beloved street food of split-pea-filled flatbread served with generous curries. It'll cost you pocket change, and tastes infinitely better than anything at the buffet.</p>",
+    "image": "images/port-louis.jpeg",
+    "slug": "port-louis"
+  },
+  {
+    "name": "Mussoorie",
+    "country": "India",
+    "lat": 30.4598,
+    "lng": 78.0644,
+    "blurb_html": "<p>In 1827, the British developed <strong>Mussoorie</strong> into a colonial hill station and called it <em>Queen of the Hills</em>. Nearly 200 years later, the nickname still fits – though whether that's a compliment depends on how you feel about faded colonial glamour.</p><p>Nestled in the foothills of the Himalayas, Mussoorie is full of colonial-era architecture: lamp posts that actually date from the Raj, churches built for homesick administrators, and the kind of <strong>winding mountain roads</strong> where you half-expect to see a British memsahib on horseback.</p><p>Mall Road gets overrun during peak season (avoid if possible), but push into Landour or up to Lal Tibba and you'll find the <strong>peaceful mountain retreat</strong> hiding beneath the touristy veneer.</p><p><strong>Our tip:</strong> time your visit for the <strong>winterline phenomenon</strong> (Oct to Feb), when warm city air meets cold Himalayan air and creates a second horizon floating in the sky. Best viewed at sunset from Gun Hill or Lal Tibba, preferably with a steaming cup of masala chai in hand.</p>",
+    "image": "images/mussoorie.jpeg",
+    "slug": "mussoorie"
+  },
+  {
+    "name": "Bilbao",
+    "country": "Spain",
+    "lat": 43.263,
+    "lng": -2.935,
+    "blurb_html": "<p>As an \"industrial port city surrounded by green mountains\", <strong>Bilbao </strong>is full of those types of contrasts – heritage facades and skyscrapers, art and industry, Spanish-ness and separate-ness.</p><p>Perpetually overshadowed by ritzy San Sebastián just up the coast, Bilbao is best approached with <strong>zero expectations.</strong></p><p>Turn up with no plans, wander endlessly, follow your nose, <a href=\"https://samiraholma.com/es/authentic-restaurants-bilbao/\" target=\"_blank\" rel=\"noopener\">pintxos</a> pintxos pintxos, sleep, <strong>repeat.</strong></p><p>All that, plus the relatively mild climate, make it an ideal <strong>launching pad</strong> for the rest of Spain.</p><p><strong>Our tip: </strong>did we mention <a href=\"https://samiraholma.com/es/authentic-restaurants-bilbao/\" target=\"_blank\" rel=\"noopener\">pintxos</a>?</p>",
+    "image": "images/bilbao.jpeg",
+    "slug": "bilbao"
+  },
+  {
+    "name": "Hyderabad",
+    "country": "India",
+    "lat": 17.385,
+    "lng": 78.4867,
+    "blurb_html": "<p>It's fair to say <strong>Hyderabad</strong> isn't the first destination on most itineraries, but that's almost entirely due to its distance from other attractions on the vast Indian subcontinent.</p><p>But Hyderabad is very much worth the detour. Despite its reputation for excellent infrastructure and its credentials as a tech hub, it's managed to preserve its historical essence in the form of the Old City – which remains the <strong>living, beating heart</strong> of the metropolis.</p><p>If medieval architecture alone doesn't sway you, there's also the city's famously welcoming culture, its delicious Irani chai, and – just quietly – the <strong>best biryani in India</strong>.</p><p><strong>Our tip:</strong> <em>White Mughals</em> by William Dalrymple – the true story of an early 19th century British resident minister who fell in love with a local noblewoman, embraced local customs, and converted to Islam.</p>",
+    "image": "images/hyderabad.jpeg",
+    "slug": "hyderabad"
+  },
+  {
+    "name": "Samarkand",
+    "country": "Uzbekistan",
+    "lat": 39.6542,
+    "lng": 66.9597,
+    "blurb_html": "<p>If Central Asia is one of the most underrated regions on earth, then <strong>Samarkand</strong> is one of the most underrated cities. Historically one of the richest and most prosperous stops along the Silk Road, it still has some of the world's most <strong>stunning Islamic architecture.</strong></p><p>Sit for a while in Registan Square as dusk falls over the city, and you'll already be glad you came. Then head to <a href=\"https://www.instagram.com/mahallaosh/?hl=en\" target=\"_blank\" rel=\"noopener\">Mahalla Osh</a> for a meal of <strong>authentic Uzbek plov</strong>. The next day, set aside an afternoon to explore the sprawling, bustling Siyob Bazaar.</p><p><strong>Our tip:</strong> venture into to the mountains south of Samarkand, and make the pilgrimage up 1,303 steps to <a href=\"https://maps.app.goo.gl/AiAmTNmKYuXNbHfc9\" target=\"_blank\" rel=\"noopener\">Hazrati Dovud Cave</a>.</p>",
+    "image": "images/samarkand.jpeg",
+    "slug": "samarkand"
+  },
+  {
+    "name": "Cairo",
+    "country": "Egypt",
+    "lat": 30.0444,
+    "lng": 31.2357,
+    "blurb_html": "<p><strong>Let's start by acknowledging that many of the negatives people mention aren't wrong. Yeah, you'll be <strong>harassed by children on camels</strong>. Asked for baksheesh. Feel unwelcome in certain areas as a woman, even when veiled.</strong></p><p><strong>But – and OK, it's a large but – if your spirit of adventure can overpower the shabbier aspects of Cairo, you might find it's <strong>one of the most fascinating cities</strong> you've ever visited. </strong></p><p><strong>Where else can you roam freely past sphinxes and pyramids, stroll along the Nile after lunch, and get lost in the sprawling markets and minarets of an area like Old Cairo? Unlike Pompeii or the Acropolis, Cairo offers a <strong>living history</strong> – not fully free from risk, but uniquely captivating for a certain kind of person.</strong></p><p><strong><strong>Our tip: </strong>don't go there expecting simple beauty. Make a plan. Be prepared for the rough edges.</strong></p>",
+    "image": "images/cairo.jpeg",
+    "slug": "cairo"
+  },
+  {
+    "name": "Bariloche",
+    "country": "Argentina",
+    "lat": -41.1335,
+    "lng": -71.3103,
+    "blurb_html": "<p>Technically \"<strong>San Carlos de Bariloche</strong>\", this borderline secret spot is styled like a Swiss alpine village, yet within striking distance of Antarctica(!).</p><p>You can start with the chocolatiers on the main street, but Bariloche is primarily a base for <strong>exploration</strong> – including skiing, hiking, and (if you can handle glacier temperatures) lake swimming.</p><p>Beyond the endless nature in every direction, Bariloche's reputation as a historical hideout for <strong>escaped Nazis</strong> adds some electricity to the air.</p><p><strong>Our tip:</strong> the best empanadas we found were at <a href=\"https://maps.app.goo.gl/VhMCzCAGkDrnc2LL9\" target=\"_blank\" rel=\"noopener\">Empanadas Barilochenses La docena de 13</a></p>",
+    "image": "images/bariloche.jpeg",
+    "slug": "bariloche"
+  },
+  {
+    "name": "Kenting",
+    "country": "Taiwan",
+    "lat": 21.9459,
+    "lng": 120.8113,
+    "blurb_html": "<p>Are there more picturesque beaches in the world? Yes. Are there street food scenes with more depth? Sure. Are there more consistent surf breaks? Yup.</p><p>But is <strong>Kenting</strong> massively underrated regardless? Yes, yes, very much yes.</p><p>Golden sand, clear water, night markets, friendly locals, national parks – did you know that all of these exist, <strong>in one spot</strong>, on the southern tip of Taiwan?</p><p>As for nightlife: it's there if you want it, but there's also plenty of <strong>space to chill</strong> – especially now the spring break vibe of the early 2000s has calmed down a bit.</p><p><strong>Our tip:</strong> <a href=\"https://maps.app.goo.gl/CyUWxpsiSLmTScyV6\" target=\"_blank\" rel=\"noopener\">Gangkou Beach</a> is beautiful, rugged, basically deserted and – dare we say it – reminiscent of some West Coast beaches in New Zealand.</p>",
+    "image": "images/kenting.jpeg",
+    "slug": "kenting"
+  },
+  {
+    "name": "Siena",
+    "country": "Italy",
+    "lat": 43.3188,
+    "lng": 11.3308,
+    "blurb_html": "<p>Nobody at Minaal (except Steve) is going to hate on Florence, beautiful city that it is – but <strong>Siena</strong> has similar beauty, similar history, a more compact size, and relatively sedate streets.</p><p>This is Tuscany at its finest. Bask in the summer sun, sipping <em>montepulciano</em> from the nearby town of, uh... Montepulciano... then climb up the never-ending steps of Torre del Mangia for an unforgettable view.</p><p>Actually, maybe leave the wine til last.</p><p><strong>Our tip:</strong> visit the Museo Civico, at the base of the tower, for unique frescoes.</p>",
+    "image": "images/siena.jpeg",
+    "slug": "siena"
+  },
+  {
+    "name": "Jerez",
+    "country": "Spain",
+    "lat": 36.685,
+    "lng": -6.1261,
+    "blurb_html": "<p>You could be forgiven for never having heard of<strong> Jerez</strong>. Even if you've travelled through Andalusia before, you're more likely to have stopped at cities like Granada, or <em>pueblos blancos</em> (\"white villages\") like Zahara de la Sierra.</p><p>But Jerez has given the world <strong>flamenco</strong> <em>and</em> <strong>sherry</strong>. It's home to the world-renowned <strong>Royal Andalusian School of Equestrian Art</strong>. And in the city's narrow lanes, all three ingredients come together in a heady concoction of horses, dancing, and dessert wine.</p><p><strong>Our tip:</strong> walk around aimlessly, without using Google Maps. Jerez is full of surprises if you let your whims and imagination carry you through the city.</p>",
+    "image": "images/jerez.jpeg",
+    "slug": "jerez"
+  },
+  {
+    "name": "York",
+    "country": "UK",
+    "lat": 53.9591,
+    "lng": -1.0815,
+    "blurb_html": "<p>If you're a history buff, <strong>York</strong> is one of England's gems. Climb the <strong>York Minster</strong> for a view of the city. It'll put you into a (Roman) Empire state of mind when you learn that Constantine the Great was proclaimed emperor on this very spot 1,700 years ago, when it was an army outpost called Eboracum.</p><p>At <strong>Jorvik Viking Centre,</strong> you'll see actual viking ruins, their history explained to you by suspiciously friendly animatronic vikings.</p><p><strong>Our tip:</strong> go in winter for viking ambience and a top-notch Christmas market.</p><p>Need a bag before you hit the road?</p><p>We've got you covered, with <strong>free shipping</strong> on orders over $400 to 60+ countries: <a href=\"https://www.minaal.com/collections/bags\" target=\"_blank\" rel=\"noopener\">SHOP BAGS</a></p>",
+    "image": "images/york.jpeg",
+    "slug": "york"
+  },
+  {
+    "name": "Funchal",
+    "country": "Portugal",
+    "lat": 32.6669,
+    "lng": -16.9241,
+    "blurb_html": "<p>Mild climate? Check. Dramatic cliffs and lush mountains? Check. Madeira wine? Obviously, check.</p><p><strong>Funchal</strong>, the main city on the Portuguese island of Madeira, is an underrated haven that'll leave you feeling like you're in the middle of nowhere – in the best possible way.</p><p>The most unique activity on the island is hiking the <em>levadas</em> – small canals dug mostly for transporting water, but which double as a 2500km (1553mi) network of <strong>hiking trails.</strong></p><p><strong>Our tip:</strong> Be ready for the screams of your fellow passengers on your flight's final approach. You've been warned.</p>",
+    "image": "images/funchal.jpeg",
+    "slug": "funchal"
+  },
+  {
+    "name": "Hilo",
+    "country": "USA",
+    "lat": 19.7241,
+    "lng": -155.0868,
+    "blurb_html": "<p>You probably know to avoid Honolulu (is that a controversial opinion...?), but then the question is: where DO you go in Hawaii?</p><p>One very good answer is: <strong>Hilo</strong>.</p><p>More affordable, more laid back, and with a frankly ridiculous collection of <strong>volcanos</strong> and other mind-blowing natural attractions, Hilo is a massively underrated destination.</p><p>Does it rain a lot in Hilo? Yeah. Does that matter when you're <strong>scuba diving </strong>with giant sea turtles? It does not.</p><p><strong>Our tip: </strong>check out Tynan's <a href=\"https://tynan.com/hilo/\" target=\"_blank\" rel=\"noopener\">list of places</a> to eat (...we know he's got great taste because he's an OG Minaal owner!)</p>",
+    "image": "images/hilo.jpeg",
+    "slug": "hilo"
+  },
+  {
+    "name": "Scarborough",
+    "country": "Tobago",
+    "lat": 11.1847,
+    "lng": -60.7353,
+    "blurb_html": "<p>As the largest town on the lesser known half of Trinidad and Tobago, <strong>Scarborough </strong>is an ideal base to explore the island.</p><p>And what an island! If you're in a mood to relax, lounge in (...on?) Nylon Pool, a submerged sandbar off the coast of Pigeon Point. Or if you're feeling energetic, hike through Main Ridge Forest Reserve, one of the Caribbean's most pristine tracts of <strong>tropical rainforest</strong>.</p><p><strong>Our tip:</strong> After you've had your fill of snorkelling, kayaking, fishing, hiking, and history... head to Scarborough's <a href=\"https://www.tripadvisor.com/Restaurant_Review-g147393-d1046687-Reviews-Blue_Crab_Restaurant-Scarborough_Tobago_Trinidad_and_Tobago.html\" target=\"_blank\" rel=\"noopener\">Blue Crab</a> for a hearty, authentic Tobagonian meal (featuring barracuda, king fish, plantain, or whatever else is available on the day). Wash it all down with some T&T rum – or lemon lime & bitters, if that's your style.</p>",
+    "image": "images/scarborough.jpeg",
+    "slug": "scarborough"
+  },
+  {
+    "name": "Innsbruck",
+    "country": "Austria",
+    "lat": 47.2692,
+    "lng": 11.4041,
+    "blurb_html": "<p><strong>Vienna gets all the buzz, but <strong>Innsbruck</strong>, nestled in Austria's mountainous Tyrol region, is very much the dashing younger sibling. It's equally spectacular in winter (skiing, ski jumping, biathlon, Glühwein) and summer (alpine hikes, fresh air, meadows so green you simply cannot avoid humming Edelweiss).</strong></p><p><strong>The cable car up to the <strong>Hafelekar</strong> is a good way to start – and probably just the pick-me-up you need after all that self-analysis at Vienna's Sigmund Freud Museum.</strong></p><p><strong><strong>Our tip: </strong>take the <a href=\"https://www.seat61.com/trains-and-routes/munich-to-innsbruck-by-train.htm\" target=\"_blank\" rel=\"noopener\">train north</a> to Munich, or drive south through the Brenner to Sterzing. Either way, you're rewarded with unforgettable views.</strong></p>",
+    "image": "images/innsbruck.jpeg",
+    "slug": "innsbruck"
+  },
+  {
+    "name": "Chicago*",
+    "country": "USA",
+    "lat": 41.8781,
+    "lng": -87.6298,
+    "blurb_html": "<p>*from Jun-Sep!</p><p>Is it <strong>cheating</strong> to nominate a city for only a few months of the year?</p><p>Probably, but we make the rules around here, so full speed ahead.</p><p>As someone hailing from outside the US, the image I had of <strong>Chicago</strong> was gritty people in big coats scurrying through snowy streets in desperate search of hot dogs and whiskey. A scene that gives a very distinct feeling of being appropriately rated.</p><p>Imagine my surprise rolling into town in blazing <a href=\"https://trk.klclick.com/ls/click?upn=u001.sSxszLkZpAl2MX2GVm-2Bnloc6cNgMbVe-2Bea7THC-2BpErPX3wKjOKlTBQscdmzSO4UftIsRh4vtIjcLhFTt1-2FBM4A9-2Fse8ui15evl5BtqBc1P3aZGAnFXOeRpvzra8p6iJZQiRV0LdyzKefGiX1DDK1-2BaSpjRB5H-2BPdFS3Z3Nhq7Am-2BYgqLDIa9AIcSxmE46LI9c-2FLOLaa0dVThI3Ooeiu4aPRz-2FgUDx2NvLaABW8cShjLACllrXEuiZNX-2B1Tq4RJcXwpmL0j9ZZbpu7YIr1Dn-2BXUK6b9iMJXVEtMuV6veQWoGwmow7MEgTZxyo2YEBWtMwjrz6jZqmx67VgUC8rMCvLaJs-2FBR6dHoioEa9zkQ4vec-3DGOWR_ev9aZEb-2BmMrBf2DripL7cPRlWKkf0z23hYgmRBTd23tIGV2ifWtDp3wt79g8L5yo3w1oH-2BLgSThx-2Bc1oBp2JdLP2Xe5ROn4EvcApIV-2B3s84RvsFr1YAgnDed-2BBuEHkyc-2Bu756DcbvAaqWDwulZDWEczmMsNQjpMY11kso3PNWyFWkE92x9zevLuAp6isCNt4rv6Dyil9riy20EjsXbUpFF-2FGjLoP8WBnQww1rRzqU8t0dR78EFTD9PCCY1uxn8T6eRBcAVTKG2EGYYHsLZghPBbIcLRMXJv9Z7dDZXW2VjvaUwjbjltd9mLAIDdBxWg-2Fo7g6nWIySYi-2B0cdY3CCxQgRefR7wK-2FHDSSDGaBzYopX7K92i0qK1W1gwyVRgvmdaKfJcD0oDV6am8NgnQ7RDTq4fEeg0E9NBF-2FkRUv7oKyqGJitU-2F2EUiJ5v9D0KFWwY\" target=\"_blank\" rel=\"noopener\">early July sunshine</a>, finding myself surrounded by striking <a href=\"https://www.choosechicago.com/articles/museums-art/public-art-in-the-chicago-loop/\" target=\"_blank\" rel=\"noopener\">public artworks</a>, watching a movie <a href=\"https://www.choosechicago.com/articles/festivals-special-events/millennium-park-summer-film-series/\" target=\"_blank\" rel=\"noopener\">under the stars</a>, and saying in shock \"is that... <a href=\"https://maps.app.goo.gl/rg7N6oG2facNHDWn7\" target=\"_blank\" rel=\"noopener\">a beach</a>?!\"</p><p>It was, indeed, a beach. And it was glorious.</p><p><strong>Our tip:</strong> ...used to be \"cocktails are cheaper than tourism, so hit the Signature Room for views instead of Willis Tower\" - alas, Sig Room RIP. So: we've heard good things about the <a href=\"https://www.timeout.com/chicago/things-to-do/riverwalk-chicago-il\" target=\"_blank\" rel=\"noopener\">Riverwalk</a>.</p>",
+    "image": "images/chicago.jpeg",
+    "slug": "chicago"
+  },
+  {
+    "name": "Delhi",
+    "country": "India",
+    "lat": 28.7041,
+    "lng": 77.1025,
+    "blurb_html": "<p>To many travellers, <strong>Delhi</strong> is synonymous with upset stomachs and, uhh, \"persistent\" Paharganj touts. But give it enough time for the antibiotics to kick in, and you'll uncover an ancient city rich in history, architecture, and food.</p><p>Perhaps more than any other Indian city, it's a <strong>melting pot</strong> of cultures, languages, and religions.</p><p>Instead of just touring known sights like <strong>Humayun's Tomb</strong> and <strong>Jama Masjid</strong> (as stunning as they are), the city is best experienced by ambling through Old Delhi and seeing where fate leads you.</p><p><strong>Our tip:</strong> on the flight over, read <a href=\"https://www.goodreads.com/book/show/124430.City_of_Djinns\" target=\"_blank\" rel=\"noopener\">City of Djinns</a> by William Dalrymple.</p>",
+    "image": "images/delhi.jpeg",
+    "slug": "delhi"
+  },
+  {
+    "name": "Weligama",
+    "country": "Sri Lanka",
+    "lat": 5.9738,
+    "lng": 80.4294,
+    "blurb_html": "<p>Forget Tulum – the most underrated beach 'n' chill destination is half the world away, in the subcontinent.</p><p>At the southern tip of Sri Lanka, <strong>Weligama</strong> combines tropical ocean temps, coconuts, epic curries, and a snake farm(?!) to give you a <strong>major de-stress</strong> (well, except for the snake farm).</p><p>The surf's mellow, but big enough to learn and play. The locals are welcoming and English is pretty widely spoken. Even the internet is decent these days!</p><p><strong>Our tip:</strong> make the most of Sri Lanka's small size, and shift from beachside cafe to <a href=\"https://unsplash.com/photos/blue-train-surrounded-by-trees-jpTT_SAU034\" target=\"_blank\" rel=\"noopener\">high country tea plantation</a> within a few hours.</p>",
+    "image": "images/weligama.jpeg",
+    "slug": "weligama"
+  },
+  {
+    "name": "Amman",
+    "country": "Jordan",
+    "lat": 31.9454,
+    "lng": 35.9284,
+    "blurb_html": "<p>Often overshadowed by the (yes, incredible) ruins of Petra and Jerash, Jordan's capital city <strong>Amman</strong> is worth carving out some time to explore.</p><p>Those who love Amman will tell you it's like no other city in the world. It's surprisingly cosmopolitan – when exploring <strong>downtown souks</strong> or <strong>world-class Roman ruins</strong>, you'll bump into swarms of effortlessly cool students who flock to Amman from all over the world to learn Arabic.</p><p>Climb the famous Rainbow Street to sample the equally famous <strong>Al-Quds Falafel, or sip mint tea amid the crowds at Hashem</strong>. <strong> </strong> <strong>Our tip:</strong> spend an evening in the courtyard of <a href=\"https://www.instagram.com/jadal_culture/?hl=en\" target=\"_blank\" rel=\"noopener\">Jadal</a>, a calm oasis in the heart of the city which often hosts local musicians and artists.</p>",
+    "image": "images/amman.jpeg",
+    "slug": "amman"
+  },
+  {
+    "name": "Russell",
+    "country": "New Zealand",
+    "lat": -35.2625,
+    "lng": 174.1217,
+    "blurb_html": "<p>Nestled within the Bay of Islands, <strong>Russell</strong> is technically a small town – but as New Zealand's original capital, we think it qualifies as an honorary city!</p><p>Although the Bay of Islands is familiar to people from Auckland – NZ's largest city – not many other Kiwis make it this far north. They're missing out. Russell is full of <strong>19th century charm</strong> – best enjoyed by taking things slow, watching the barnacled sailboats bobbing on the waves, and strolling the promenade at sunset.</p><p>When you have a spare afternoon, catch the passenger ferry to <strong>Waitangi where the nation's founding document was signed –</strong> or take a cruise around the islands for a good chance of being followed by dolphins.</p><p><strong>Our tip:</strong> stay at the <a href=\"https://www.theduke.co.nz/\" target=\"_blank\" rel=\"noopener\">Duke of Marlborough Hotel</a> – you'll feel like you've gone back in time.</p>",
+    "image": "images/russell.jpeg",
+    "slug": "russell"
+  },
+  {
+    "name": "Košice",
+    "country": "Slovakia",
+    "lat": 48.7164,
+    "lng": 21.2611,
+    "blurb_html": "<p>In 2013 <strong>Košice</strong> was named European Capital of Culture. You missed it, but so did pretty much everyone else.</p><p>Slovakia's second city sits in the far east of the country, closer to Budapest than to its own capital. It has Europe's easternmost Gothic cathedral, a hoard of <strong>2,920 gold coins</strong> discovered under a building in 1935, and a former tobacco factory reborn as Tabačka Kulturfabrik, one of Central Europe's cooler arts venues. The main pedestrian street is shaped unlike any European square you've seen: long, narrow, and weirdly satisfying to walk end-to-end.</p><p>All of this at prices that feel like someone forgot a zero.</p><p><strong>Our tip: <a href=\"https://www.pivovarhostinec.sk/en/\" target=\"_blank\" rel=\"noopener\">Pivovar Hostinec</a></strong> has been brewing beer in a Gothic building on the main square since 1542. One of the oldest restaurants in Slovakia, and the beer is everything you'd expect.</p>",
+    "image": "images/košice.jpeg",
+    "slug": "košice"
+  },
+  {
+    "name": "Suzhou",
+    "country": "China",
+    "lat": 31.299,
+    "lng": 120.5853,
+    "blurb_html": "<p>About 750 years ago, Marco Polo visited <strong>Suzhou</strong> and called it the Venice of the East. Bold claim from a Venetian, but Marco had a point.</p><p>The canals are still there. So are the classical gardens (nine of them UNESCO-listed), which might be the most serene spaces in all of China. The Suzhou Museum, designed by local boy I.M. Pei, is worth the trip alone. And the food scene, anchored by Su-style noodles and a sweet-and-sour <strong>\"squirrel fish\"</strong> you won't forget, is as underrated as the city.</p><p>It's only 25 minutes from Shanghai by bullet train, but most people never bother stopping. Their loss.</p><p><strong>Our tip:</strong> skip the daytime crowds on Pingjiang Road and come back at dusk, when the lanterns fire up and the <strong>canal reflections</strong> do things to your camera that no filter can.</p>",
+    "image": "images/suzhou.jpeg",
+    "slug": "suzhou"
+  },
+  {
+    "name": "Cartagena",
+    "country": "Colombia",
+    "lat": 10.391,
+    "lng": -75.5144,
+    "blurb_html": "<p>You've already seen <strong>Cartagena</strong> on Instagram. Bougainvillea cascading over colonial balconies, women in bright dresses balancing fruit bowls, all of it looking slightly too perfect.</p><p>Well, it <em>is</em> that pretty. It's also increasingly overrun with cruise ships and influencers, which is why you need to do what most of them don't: leave the <strong>Walled City</strong>.</p><p>Just outside the walls, <strong>Getsemaní </strong>went from rough neighbourhood to Cartagena's creative heart without losing its edge. Street art, salsa pouring out of open doorways, and Colombian food at prices the old town wouldn't recognize.</p><p>It's hot. It's sticky. The street vendors are relentless. Go anyway.</p><p><strong>Our tip: </strong>grab a beer from a <strong>street vendor</strong> and watch the sunset from the city walls for free. Café del Mar is right there charging triple for the same view.</p>",
+    "image": "images/cartagena.jpeg",
+    "slug": "cartagena"
+  },
+  {
+    "name": "Lübeck",
+    "country": "Germany",
+    "lat": 53.8655,
+    "lng": 10.6866,
+    "blurb_html": "<p>Hamburg gets the headlines, but head an hour north and you'll find a place that was running northern Europe's medieval economy while Hamburg was still in the crib.</p><p><strong>Lübeck</strong>, the former \"Queen of the Hanseatic League\", is very much worth your time. Church spires decorate the skyline of the island Old Town, a UNESCO site featuring brick Gothic architecture and hidden courtyards – including the merchant house made famous by Thomas Mann's novel <em>Buddenbrooks</em>.</p><p>The <strong>marzipan obsession</strong> is real (and EU-protected?!), with <a href=\"https://www.niederegger.de/en/cafe-niederegger/cafe-niederegger/\" target=\"_blank\" rel=\"noopener\">Niederegger's cafe</a> serving loads of interesting varieties. There's also the Holsten Gate, salt warehouses on the Trave river, and (of course) picturesque cobbled streets.</p><p><strong>Our tip:</strong> book ahead for <a href=\"https://www.schiffergesellschaft.de/\" target=\"_blank\" rel=\"noopener\">Schiffergesellschaft</a>, a 1535 Seafarers' Guild Hall where model ships dangle from the ceiling while staff deliver authentic North German fish dishes.</p>",
+    "image": "images/lübeck.jpeg",
+    "slug": "lübeck"
+  },
+  {
+    "name": "Iloilo City",
+    "country": "Philippines",
+    "lat": 10.7202,
+    "lng": 122.5621,
+    "blurb_html": "<p>Most visitors to Panay Island treat <strong>Iloilo City</strong> as a layover en route to Boracay's beaches. Their loss? We say yes.</p><p>What they're missing: the most walkable city in the Philippines (yes, a reasonably low bar, but still). Wide boulevards, a riverside esplanade, and none of the chaos that defines Manila. The Spanish colonial churches are still standing, there's a <strong>thriving cafe scene</strong>, and the food is legitimately excellent.</p><p>The city's famous for <strong>La Paz batchoy</strong> – a pork and noodle soup that's basically the Iloilo version of pho, topped with chicharrón and served piping hot. Three historic stalls in La Paz Market have been offering it since the 1940s, each one claiming to be the original.</p><p>Also worth noting: you can walk around at night without clutching your belongings to your chest.</p><p><strong>Our tip:</strong> head to <a href=\"https://maps.app.goo.gl/Uf1xXRkmk6Qwpuk5A\" target=\"_blank\" rel=\"noopener\">Netong's</a> in La Paz Market for batchoy the way it's been made for decades.</p>",
+    "image": "images/iloilo-city.jpeg",
+    "slug": "iloilo-city"
+  },
+  {
+    "name": "Victoria",
+    "country": "Canada",
+    "lat": 48.4284,
+    "lng": -123.3656,
+    "blurb_html": "<p>British Columbia's capital is a blend of two seemingly incompatible elements: half Victorian-era colonial holdover (afternoon tea, double-decker buses, the whole bit), and half rugged West Coast wilderness. Somehow, it works.</p><p><strong>Victoria</strong> sits on the southern tip of Vancouver Island, close enough to Vancouver for easy ferry (or even better, seaplane!) access, but different enough to justify the trip. The Inner Harbour is proper photogenic, the Butchart Gardens lives up to the hype, and you can whale-watch in the morning then grab craft beer by afternoon.</p><p>Canada's oldest Chinatown deserves more attention than it gets, particularly <strong>Fan Tan Alley</strong> – the narrowest street in North America, now filled with boutique shops rather than the gambling dens that gave it its name.</p><p>Mild climate, walkable downtown, and <strong>ocean on three sides</strong>. No wonder locals call it \"the best-kept secret\" while simultaneously promoting it to everyone.</p><p><strong>Our tip:</strong> wander through Fan Tan Alley, then grab dim sum at <a href=\"https://www.donmee.com/\" target=\"_blank\" rel=\"noopener\">Don Mee</a>, which has been serving it trolley-style since 1923.</p>",
+    "image": "images/victoria.jpeg",
+    "slug": "victoria"
+  },
+  {
+    "name": "Lahore",
+    "country": "Pakistan",
+    "lat": 31.5204,
+    "lng": 74.3587,
+    "blurb_html": "<p>Although visiting <strong>Lahore</strong> – and Pakistan generally – comes with a degree of risk that many people aren't comfortable with, the city <em>and</em> the country contain the potential for unforgettable experiences.</p><p>Lahore's a bit like Delhi, but with fewer tourists. It has the same <strong>Mughal heritage</strong> and architecture, and the same truly excellent <strong>Punjabi cuisine</strong>. After getting your fill of history by exploring Old Lahore – including the monumental Badshahi Mosque – sample the vibe (and food) by heading to Anarkali Bazaar or Lakshmi Chowk.</p><p><strong>Our tip:</strong> have a sunset meal at <a href=\"https://www.instagram.com/havelirestaurant_lahore/?hl=en\" target=\"_blank\" rel=\"noopener\">Haveli Restaurant</a>, which has views of Badshahi reminiscent of the KFC overlooking the Pyramids of Giza (but with <em>much</em> better chicken).</p>",
+    "image": "images/lahore.jpeg",
+    "slug": "lahore"
+  },
+  {
+    "name": "Qingdao",
+    "country": "China",
+    "lat": 36.0671,
+    "lng": 120.3826,
+    "blurb_html": "<p>You'd be forgiven for thinking you're in Stuttgart or Munich, until your boozy attempts to communicate in German are met with even blanker stares than usual. That's because you're actually in <strong>Qingdao</strong>.</p><p>During a brief 17-year occupation before World War One, Germany transformed this sleepy Chinese fishing village into a <strong>major fortified port</strong>. Today, wide leafy streets and stuccoed villas are a reminder of those days of foreign influence.</p><p>With a population of only (only!) ten million, Qingdao tends to fly under the radar. But it's one of China's <strong>most liveable cities</strong>, with high GDP per capita, and is home to world-famous companies like Haier and Tsingtao (the world's sixth largest brewery).</p><p><strong>Our tip:</strong> the <a href=\"https://www.tsingtao.com.cn/EN/product/FashionPart.html\" target=\"_blank\" rel=\"noopener\">Tsingtao Beer Museum</a> is surprisingly interesting, even if you aren't a massive beer aficionado.</p>",
+    "image": "images/qingdao.jpeg",
+    "slug": "qingdao"
+  },
+  {
+    "name": "Tavira",
+    "country": "Portugal",
+    "lat": 37.1275,
+    "lng": -7.6506,
+    "blurb_html": "<p>No shortage of <strong>about-to-be-crispy-sunburnt</strong> English lads arrive in the Algarve every day. But thankfully, they mostly stay out west where Ryanair drops them off.</p><p>This means they miss out on the most underrated spot along the southern Portuguese coast: <strong>Tavira.</strong></p><p>Quaint restaurants along the river. Taking a local ferry to the <strong>golden-sand beach</strong>. Fado ringing through the cobblestoned streets.</p><p>It's all there, it's all so good, and you'll encounter a <strong>fraction of the tourists</strong> you'd find in equally picturesque Italian villages.</p><p><strong>Our tip:</strong> <a href=\"https://maps.app.goo.gl/qbWQ6dSyeWfoRt1d7\" target=\"_blank\" rel=\"noopener\">Fado com História</a> (Fado With History) is the best spot for getting your <em>saudade</em> on.</p>",
+    "image": "images/tavira.jpeg",
+    "slug": "tavira"
+  },
+  {
+    "name": "Ericeira",
+    "country": "Portugal",
+    "lat": 38.9631,
+    "lng": -9.4153,
+    "blurb_html": "<p>Every self-respecting digital nomad knows about Lisbon. And the Lisbon crew will tell you \"everyone\" knows about <strong>Ericeira</strong>. But it ain't so.</p><p>Ericeira still flies under the radar of most people – which is a miracle, given it's only a <strong>30-minute drive</strong> from Lisbon airport.</p><p>Once there, you'll be ducking down cobbled alleys in the old town, sipping espresso at dawn with the wizened locals, and lounging in that unfortunately-sized <strong>emergency swimwear</strong> you grabbed from Decathlon.</p><p>Y'know, all that Europe stuff.</p><p><strong>Our tip:</strong> <a href=\"https://www.tripadvisor.com/Restaurant_Review-g652084-d4597782-Reviews-Adega_Bar_1987-Ericeira_Mafra_Lisbon_District_Central_Portugal.html\" target=\"_blank\" rel=\"noopener\">Adega</a> gets uncomfortably crowded in summer, but that's because it's legit. Find a good time and go.</p>",
+    "image": "images/ericeira.jpeg",
+    "slug": "ericeira"
+  },
+  {
+    "name": "Bhaktapur",
+    "country": "Nepal",
+    "lat": 27.671,
+    "lng": 85.4298,
+    "blurb_html": "<p>Kathmandu has always gotten a lot of love from travellers (including <a href=\"https://www.youtube.com/watch?v=sJfhn3H39h4\" target=\"_blank\" rel=\"noopener\">Cat Stevens</a>) – but its old-world charm is increasingly diluted by noise, high-rises, and dance bars. To fully appreciate Nepal's soul, head to the nearby medieval city-state of <strong>Bhaktapur</strong>.</p><p>There, you'll find <strong>mountain goats</strong> roaming temple squares, and tree shrines illuminated by candles. There's still bustle, but it's the bustle of vegetable markets, of rice being threshed on flagstones, of pottery wheels spinning, and of a huge mountain goat chasing you through the streets (don't ask).</p><p>\"Magical\" is an overused word, but Bhaktapur truly deserves it.</p><p><strong>Our tip:</strong> time your visit to coincide with <strong>Bisket Jatra</strong>, which pits one half of the city against the other in a chaotic tug-of-war.</p>",
+    "image": "images/bhaktapur.jpeg",
+    "slug": "bhaktapur"
+  },
+  {
+    "name": "New Plymouth",
+    "country": "New Zealand",
+    "lat": -39.0556,
+    "lng": 174.0752,
+    "blurb_html": "<p>A lot of people think of <strong>New Plymouth</strong> as a mere gateway to the stunning <strong>Mt Taranaki</strong> (or \"Mt Fuji\" in <em>The Last Samurai</em>). But the city itself has a lot more going for it than many realize.</p><p>Stroll through <strong>Pukekura Park</strong>, one of NZ's best botanical gardens, before grabbing a <a href=\"https://www.foodandwine.com/what-is-a-flat-white-6951157\" target=\"_blank\" rel=\"noopener\">flat white</a> and heading to an art gallery (or three).</p><p><strong>Our tip:</strong> drive along the coast to <strong>Ōakura</strong>, a seaside hamlet with a spectacular beach. You'll likely see seals flopping onto the sand to bathe in the sunshine.</p><p>The Crossbody 2.0 (and the Rolltop!) are designed to blend in to <strong>any</strong> destination – underrated or otherwise – and they're super convenient cabin bags for the long haul.</p><p>Check out the subscriber-only pre order <strong>before it closes today:</strong> <a href=\"https://www.minaal.com/collections/pre-order\" target=\"_blank\" rel=\"noopener\">GRAB IT WHILE IT'S HOT</a></p>",
+    "image": "images/new-plymouth.jpeg",
+    "slug": "new-plymouth"
+  },
+  {
+    "name": "Muscat",
+    "country": "Oman",
+    "lat": 23.588,
+    "lng": 58.3829,
+    "blurb_html": "<p>While everyone piles into Dubai for the latest dropshipping conference, <strong>Muscat</strong> sits quietly down the coast, doing its own thing. Which is exactly how Oman likes it.</p><p>The capital manages something rare in the Gulf: it’s got all the infrastructure you’d expect from a wealthy country, but without all the glass towers trying to out-tower each other. Instead, you get whitewashed buildings tucked between dramatic mountains and a distinctly Arabian coastline.</p><p>The souqs still smell like <strong>frankincense</strong> (Oman produces the world’s best). The Sultan Qaboos Grand Mosque is a triumph of contemporary Islamic architecture. And unlike some of its neighbors, Muscat hasn’t bulldozed its past to make room for the future – the historic port area of <strong>Muttrah</strong> remains intact.</p><p><strong>Our tip:</strong> Drive out to Wadi Shab for the day. The hike through the canyon to a hidden waterfall is spectacular - and on weekdays you have it to yourself.</p>",
+    "image": "images/muscat.jpeg",
+    "slug": "muscat"
+  },
+  {
+    "name": "Aguascalientes",
+    "country": "Mexico",
+    "lat": 21.8818,
+    "lng": -102.2916,
+    "blurb_html": "<p><strong>Aguascalientes</strong> suffers from being neither a beach resort nor a colonial heavyweight. It’s just... there.</p><p>The name means “hot waters,” i.e. the thermal springs scattered nearby. The city itself is super walkable, with a historic center that doesn’t get the attention of Guanajuato or San Miguel de Allende but absolutely should.</p><p>What really sets it apart is the <strong>Feria de San Marcos</strong> - one of Mexico’s largest and oldest fairs, held every spring. Even outside festival season, there’s a relaxed energy here. Modern Mexico mixing with old traditions, without the self-consciousness that comes with heavy tourism.</p><p>Plus, you’re in one of Mexico’s emerging wine regions. The wineries around Aguascalientes don’t have Baja’s reputation yet, which means better prices and fewer crowds.</p><p><strong>Our tip: </strong>Hit up <a href=\"https://restaurantlosarcos.com/aguascalientes/\" target=\"_blank\" rel=\"noopener\">Los Arcos</a> in the evening. Nuff said.</p>",
+    "image": "images/aguascalientes.jpeg",
+    "slug": "aguascalientes"
+  },
+  {
+    "name": "Hanoi",
+    "country": "Vietnam",
+    "lat": 21.0278,
+    "lng": 105.8342,
+    "blurb_html": "<p>Here’s the thing about <strong>Hanoi</strong>: everyone visits, almost no one gives it enough time.</p><p>People fly in, spend a day racing between sights, then make a beeline for Ha Long Bay or Hoi An. Our take: Hanoi deserves better than being used as a transit lounge.</p><p>The <strong>Old Quarter</strong> is chaotic in the best possible way. Each street traditionally specialized in one trade, and you can still see echoes of that: silk here, flowers there, endless pho joints everywhere.</p><p>The lakes (especially <strong>Hoan Kiem</strong>) give the city breathing room. There’s crumbling French colonial architecture all over the place. And the food scene is, as you'd expect, top notch.</p><p><strong>Our tip:</strong> For dinner, skip the touristy spots around Hoan Kiem Lake. Head to <a href=\"https://www.tripadvisor.com/Restaurant_Review-g27501570-d1123439-Reviews-Cha_Ca_Thang_Long-Hoan_Kiem_Hanoi.html\" target=\"_blank\" rel=\"noopener\">Cha Ca Thang Long</a> on Duong Thanh street instead, and order the fish.</p>",
+    "image": "images/hanoi.jpeg",
+    "slug": "hanoi"
+  },
+  {
+    "name": "Madison",
+    "country": "USA",
+    "lat": 43.0731,
+    "lng": -89.4012,
+    "blurb_html": "<p>People who kinda-sorta-know Wisconsin usually picture cheese curds and Brett Favre (possibly at the same time). And while <strong>Madison</strong> has plenty of both, reducing it to dairy and beefcake stereotypes is doing it a serious disservice.</p><p>Sandwiched between two lakes and anchored by one of America's <strong>top public universities</strong>, Madison is a heady mix: the best bits of a college town plus the political energy of a state capital. The result? A city that's both laid-back and engaged, where you can debate policy over craft beer.</p><p>Yes, the winters are brutal enough to make a Minnesotan flinch. But that just makes <strong>summer lake culture</strong> more precious - and gives you a legit excuse to spend the other half of the year in cozy dive bars.</p><p><strong>Our tip:</strong> walk the entire length of State Street, from campus to the Capitol. It's a greatest hits reel of Madison in 15 minutes, plus you'll build an appetite for the heck-yeah brats at <a href=\"https://union.wisc.edu/dine/find-food-and-drink/the-brat-stand\" target=\"_blank\" rel=\"noopener\">Memorial Union Terrace</a>.</p>",
+    "image": "images/madison.jpeg",
+    "slug": "madison"
+  },
+  {
+    "name": "Naples",
+    "country": "Italy",
+    "lat": 40.8518,
+    "lng": 14.2681,
+    "blurb_html": "<p>While Venice decorously sinks, and Pisa puts up with tourists drawn by subpar building methods, <strong>Naples</strong> sits squat in the south, being gloriously and chaotically <em>itself.</em></p><p>Is it gritty? Yup. Will your guidebook warn you about pickpockets and terrible traffic? Also yes. But Naples is where <strong>pizza was invented</strong>, after all; it's where Italian life happens without a perpetual filter, and where the coffee will make you question every cup you've had north of Rome.</p><p>Plus - no big deal - it's your gateway to Pompeii, the Amalfi Coast, and <strong>Mount Vesuvius</strong>, meaning you can base yourself somewhere with soul instead of yet another overpriced coastal resort.</p><p><strong>Our tip:</strong> find the smallest, most chaotic pizzeria you can locate and order a basic Margherita. Bonus points if the owner argues with you about toppings.</p>",
+    "image": "images/naples.jpeg",
+    "slug": "naples"
+  },
+  {
+    "name": "Victoria",
+    "country": "Seychelles",
+    "lat": -4.6191,
+    "lng": 55.4513,
+    "blurb_html": "<p>When people think Seychelles, they picture deserted beaches and overwater bungalows. <strong>Victoria</strong> - one of the world's smallest capital cities - usually doesn't factor into anyone's fantasies. <em>[Editor's Note: in that sense, Victoria has much in common with our co-founders].</em></p><p>Which is a shame, because this tiny city (population: 26,000) offers something most tropical paradises don't: genuine urban life. You get the authentic <strong>Creole culture</strong>, the spice markets, the real Seychellois food - all while being a 20-minute drive from beaches that look like screensavers.</p><p><strong>Our tip:</strong> hit up the somewhat oddly-named <a href=\"https://story-seychelles.com/sir-selwyn-selwyn-clarke-market/\" target=\"_blank\" rel=\"noopener\">Sir Selwyn Selwyn-Clarke Market</a> - the best place to try fruits you've never heard of and pick up some of the world's most expensive cinnamon as a sure-to-please-your-significant-other souvenir.</p>",
+    "image": "images/victoria.jpeg",
+    "slug": "victoria"
+  },
+  {
+    "name": "Ponta Delgada",
+    "country": "Portugal",
+    "lat": 37.7483,
+    "lng": -25.6666,
+    "blurb_html": "<p>This is a rare (OK, \"rare\") cheat entry – because if you're going all the way to <strong>Ponta Delgada</strong>, you really need to explore all of the other eight islands in the Azores chain.</p><p>For one thing, despite all being Portuguese islands pretty near to each other, their culture, dialect, and cuisine differ since each island was settled over a <strong>200-year timespan</strong>.</p><p>The other – maybe more obvious – thing is: all the islands are super cool. From Europe's only tea plantation (Gorreana) to farms on top of <strong>prehistoric lava</strong> (fajã), the Azores are actually, properly, truly unique.</p><p><strong>Our tip:</strong> hang out with the salty sea dogs who stop over on intercontinental sailing voyages – you'll find a bunch at the very eccentric <a href=\"https://maps.app.goo.gl/mgopE6gx6PbMVbjg8\" target=\"_blank\" rel=\"noopener\">Peter Café Sport</a>.</p>",
+    "image": "images/ponta-delgada.jpeg",
+    "slug": "ponta-delgada"
+  },
+  {
+    "name": "Buenos Aires",
+    "country": "Argentina",
+    "lat": -34.6037,
+    "lng": -58.3816,
+    "blurb_html": "<p>Arguably the most European of non-European cities, <strong>Buenos Aires</strong> is also perennially underrated – luckily, we're here to change that.</p><p>Getting past the headlines of ongoing financial disaster, you'll find an energetic European-style city – sitting down <strong>near Antarctica</strong>. How'd it end up that way? Thank the historically eyebrow-raising immigration policy of \"<em>literally everyone, unless they're insane or have infectious diseases</em>\".</p><p>From <strong>speakeasies</strong> hidden behind flower shops (Florería Atlántico) to surprisingly legit and very relaxing Japanese gardens (Jardín Japonés), B.A. is a busy, cosmopolitan city... that you've probably never even considered visiting.</p><p>Time to change that. <strong> </strong> <strong>Our tip:</strong> get up-to-date advice on the current cash situation before you leave – fake banknotes are common, even out of ATMs, and the coin situation is occasionally <a href=\"https://theworld.org/stories/2017/03/10/where-are-argentinas-coins\" target=\"_blank\" rel=\"noopener\">bonkers</a>.</p>",
+    "image": "images/buenos-aires.jpeg",
+    "slug": "buenos-aires"
+  },
+  {
+    "name": "Thessaloniki",
+    "country": "Greece",
+    "lat": 40.6401,
+    "lng": 22.9444,
+    "blurb_html": "<p>Everything is relative. In some countries, Thessaloniki would be <em>the</em> top tourist drawcard – but in Greece, it plays <strong>second fiddle</strong> to Athens, Santorini, and half a dozen other islands of the Aegean.</p><p>But it has an atmosphere all its own. As you get lost in the Byzantine labyrinths of the upper city, <strong>Ano Poli</strong>, and watch cats leap between ancient crumbling pillars, you'll almost feel that you're in Constantinople itself.</p><p>Spend the rest of the day ambling down the hill towards the sea, stopping at whatever cafe or panorama takes your fancy.</p><p><strong>Our tip:</strong> stay at <a href=\"https://www.tripadvisor.co.nz/Hotel_Review-g189473-d2294803-Reviews-Little_Big_House-Thessaloniki_Thessaloniki_Region_Central_Macedonia.html\" target=\"_blank\" rel=\"noopener\">Little Big House</a> – one of Europe's best guest houses – whose owners have been dishing up incredible Greek hospitality for nearly two decades.</p>",
+    "image": "images/thessaloniki.jpeg",
+    "slug": "thessaloniki"
+  },
+  {
+    "name": "Petrapavlovsk",
+    "country": "Russia",
+    "lat": 53.0452,
+    "lng": 158.6511,
+    "blurb_html": "<p><em>(Hopefully it goes without saying that noting a city 8+ hours flight away from Moscow is \"underrated\" as a destination does not equal an endorsement of that country's government.)</em></p><p>With that throat-clearing out of the way, why <strong>Petrapavlovsk</strong>?</p><p>This place is so under the radar we can only give very personal takes: it's cool because it's part of the Risk map (Kamchatka!); it's the second largest city in the world that <strong>can't be reached by roads</strong> connecting it to the rest of its landmass; and one of its sister cities is Unalaska, which has previously been honoured with a mention in a Minaal email!</p><p>You may arrive by sea and wake to many <strong>large black logs</strong> floating in the bay. The logs are submarines.</p><p>You may be taken to a \"resort pool\" where a sweaty man in unrealistically small swimwear engages in a wild fight with <strong>swarming wasps</strong>.</p><p>You may just make some lifelong memories.</p><p><strong>Our tip:</strong> make sure your tour runs late – your (compulsory) guide will need to bail (to the opera, natch) and will throw you out of the van, meaning you can climb nearby hills and spot huge <strong>Lenin statues.</strong></p>",
+    "image": "images/petrapavlovsk.jpeg",
+    "slug": "petrapavlovsk"
+  },
+  {
+    "name": "Charleston",
+    "country": "USA",
+    "lat": 32.7765,
+    "lng": -79.9311,
+    "blurb_html": "<p>USAians, you probably know all about <strong>Charleston</strong>.</p><p>Outside the country? Not so much.</p><p>But tie together a walkable historic district, accessible beaches, attractive architecture, and some southern charm – you've got a <strong>seriously underrated</strong> city package.</p><p>It's a <strong>chameleon of cities</strong>, serving \"bachelor parties\" (stag dos, for those of us more closely tied to Mother England), historical exploration, family trips to the ocean, and romantic getaways equally well.</p><p>Apart from very sticky and often hurricane-y summers, there's not much bad weather to plan around, and there's a <strong>surprisingly well-connected </strong>airport for a city of its size.</p><p><strong>Our tip:</strong> <a href=\"https://www.bakersbarchs.com/our-story\" target=\"_blank\" rel=\"noopener\">Baker's Bar</a>. Quintessential.</p>",
+    "image": "images/charleston.jpeg",
+    "slug": "charleston"
+  },
+  {
+    "name": "Khulna",
+    "country": "Bangladesh",
+    "lat": 22.8456,
+    "lng": 89.5403,
+    "blurb_html": "<p><strong>Khulna</strong> lacks the name recognition of Dhaka or Chittagong – which, ok, are not exactly at the top of most <em>Visit Before You Die</em> lists either. But much like Bangladesh itself, Khulna is likely to give you some of your fondest and most vivid memories.</p><p>It's the gateway to the Sundurbans, the world's <strong>largest mangrove forest </strong>–<strong>​</strong>home to a number of wild cats including endangered Bengal tigers.</p><p>The city itself is relatively quiet by Bangladeshi standards, and best explored by <strong>taking an auto-rickshaw</strong> semi-aimlessly through the backstreets. If you feel like walking, head to <strong>Khulna University</strong> and stroll among the lakes and greenery.</p><p><strong>Our tip:</strong> try <a href=\"https://www.thespiceodyssey.com/eat/bhorta-1\" target=\"_blank\" rel=\"noopener\">bhorta</a>, a classic Bangladeshi comfort food.</p>",
+    "image": "images/khulna.jpeg",
+    "slug": "khulna"
+  },
+  {
+    "name": "Riga",
+    "country": "Latvia",
+    "lat": 56.9496,
+    "lng": 24.1052,
+    "blurb_html": "<p>As relentless stag parties descend on Prague and Budapest, those wanting a slightly less debauched experience should head north to <strong>Riga</strong> – the Baltic's best-kept secret.</p><p>Europe's finest collection of <strong>Art Nouveau architecture</strong> (UNESCO protected an entire district), medieval merchants' houses, and Soviet-era monuments all coexist in one walkable city. And if you do want a night out, the local <strong>Black Balsam</strong> herbal liqueur has been curing hangovers (usually after causing them) since 1700.</p><p>With just 600,000 residents, Riga feels easily \"knowable\". The massive <strong>Central Market</strong> – housed in five repurposed German Zeppelin hangars – serves up everything from Baltic smoked fish to artisan rye bread. And unlike its southern neighbours, summer twilights here stretch on, and on, and ooooon.</p><p><strong>Our tip:</strong> time your visit for the <a href=\"https://www.dziesmusvetki.lv/en/about-the-celebration/the-song-and-dance-celebration/\" target=\"_blank\" rel=\"noopener\">Song and Dance Festival</a> (every five years, next in '28) when 40,000 performers in traditional dress take over the city. Eurovision meets folk tradition.</p>",
+    "image": "images/riga.jpeg",
+    "slug": "riga"
+  },
+  {
+    "name": "Lima",
+    "country": "Peru",
+    "lat": -12.0464,
+    "lng": -77.0428,
+    "blurb_html": "<p>Those in the know say that <strong>Lima</strong> is one the most beautiful cities in South America – if not <em>the</em> most beautiful.</p><p>Wedged between the Pacific Ocean and the Andes, it's certainly hard to compete with topographically. Its cuisine is also world-class, particularly if you're a fan of fish and/or hot chilli. Head to <a href=\"https://www.tripadvisor.es/Restaurant_Review-g294316-d8261915-Reviews-Cevicheria_Beto_Chorrillos-Lima_Lima_Region.html\" target=\"_blank\" rel=\"noopener\">Cevichería Beto Chorrillos</a> for some of the best ceviche in Lima.</p><p>When you've had enough of strolling along the <strong>Malecón</strong>, the city's clifftop boardwalk, check out <a href=\"https://www.museolarco.org/en/\" target=\"_blank\" rel=\"noopener\">Museo Larco</a> for an incredible glimpse into the pre-Columbian societies of the Andes.</p><p><strong>Our tip:</strong> everyone raves about the fancy Miraflores district, but don't miss <a href=\"https://thebetterbeyond.com/best-things-to-do-in-barranco-lima-peru/\" target=\"_blank\" rel=\"noopener\">Barranco</a> for a more laid-back vibe.</p>",
+    "image": "images/lima.jpeg",
+    "slug": "lima"
+  },
+  {
+    "name": "Yogyakarta",
+    "country": "Indonesia",
+    "lat": -7.7956,
+    "lng": 110.3695,
+    "blurb_html": "<p>Thoroughly eclipsed by nearby Bali, <strong>Yogyakarta</strong> (in southern Java) is a true diamond in the rough. Its ancient pedigree, extensive Hindu temples, and Muslim Sultan make it a <strong>cultural melting pot</strong> – and of all cities in the archipelago, it offers one of the most authentic glimpses into the Indonesian way of life.</p><p>Whatever you do, don't give yourself 24 or 48 hours to \"tick off\" the city's sights. It's one of those places best enjoyed slowly, deeply (madly?), and without a particular destination in mind. Amble through the morning markets; check out the <a href=\"https://www.tripadvisor.com/Attraction_Review-g12564917-d14061784-Reviews-De_Tjolomadoe-Karanganyar_Central_Java_Java.html\" target=\"_blank\" rel=\"noopener\">colonial sugar factory</a>; and don't forget to try some delicious nasi liwet.</p><p><strong>Our tip:</strong> make the trip to nearby <strong>Kaliurang</strong> for some fresh (albeit pretty volcanic) air.</p>",
+    "image": "images/yogyakarta.jpeg",
+    "slug": "yogyakarta"
+  },
+  {
+    "name": "Robertsport",
+    "country": "Liberia",
+    "lat": 6.7533,
+    "lng": -11.3694,
+    "blurb_html": "<p>Three hours northwest of Monrovia on a rough road, <strong>Robertsport</strong> (<em>thanks for the tip, </em><a href=\"https://www.moneyhub.co.nz/\" target=\"_blank\" rel=\"noopener\">Chris W</a><em>!</em>) is where Liberia's surf culture was born (now there's a sentence you never thought you'd read).</p><p>The country's civil wars ended in 2003. A few years later, visiting Americans brought surfboards. Locals picked it up and called it sliding. Now there are <strong>five left-hand point breaks</strong> along the coast, consistently excellent, and you'll likely have them to yourself.</p><p>On the beach sits a cottonwood tree where freed American slaves <strong>carved their names</strong> after landing from Norfolk in 1829.</p><p>It's remote, the roads turn to mud in wet season, and you'll want cash and mosquito repellent. None of that matters when you're the <strong>only human</strong> on a 200-metre left.</p><p><strong>Our tip: </strong><a href=\"https://www.instagram.com/robertsportsurfclub\" target=\"_blank\" rel=\"noopener\">Robertsport Surf Club</a> for board rental and lessons right on the beach.</p>",
+    "image": "images/robertsport.jpeg",
+    "slug": "robertsport"
+  },
+  {
+    "name": "Invercargill",
+    "country": "New Zealand",
+    "lat": -46.4132,
+    "lng": 168.3538,
+    "blurb_html": "<p><strong>Invercargill</strong> <em>(thanks for the tip, Matthew!)</em> is where you refuel on the way to the Stewart Island ferry, sleep before the Catlins, or grab a coffee between Queenstown and the end of the road. It very rarely gets to be The Destination.</p><p>The <strong>wide, flat streets</strong> feel like someone designed a Scottish town and forgot the hills. Locals roll their Rs in an accent you won't hear up north. And inside <a href=\"https://www.ehayes.co.nz/\" target=\"_blank\" rel=\"noopener\">E Hayes & Sons</a>, a working hardware store on Dee Street, sits <strong>Burt Munro's original 1920 Indian Scout</strong>: the bike that set land speed records on the salt flats in Bonneville, UT.</p><p>Invercargill is cold, often sideways-rainy, and nobody pretends otherwise. But <strong>Bluff oysters</strong> in season are worth the detour alone.</p><p><strong>Our tip:</strong> gotta be <a href=\"https://oystercove.co.nz/\" target=\"_blank\" rel=\"noopener\">Oyster Cove</a> in nearby Bluff, right on Foveaux Strait.</p>",
+    "image": "images/invercargill.jpeg",
+    "slug": "invercargill"
+  },
+  {
+    "name": "Rabat",
+    "country": "Morocco",
+    "lat": 34.0209,
+    "lng": -6.8416,
+    "blurb_html": "<p>Morocco's actual capital, forever in Marrakech's shadow. Which is precisely why you should go.<em> (Thanks for the tip, Blaise!)</em></p><p><strong>Rabat's</strong> medina has the same blue-and-white Andalusian alleyways, the same mint tea, the same mind-melting tilework, but at a pace that lets you take a breath. The recently restored <a href=\"https://www.chellah.site/\" target=\"_blank\" rel=\"noopener\">Chellah</a> layers Roman ruins under a medieval necropolis, all overrun by nesting storks. The <strong>Kasbah des Oudaïas</strong> spills into sweeping Atlantic views.</p><p>You're 80 minutes from Tangier on <strong>Al Boraq high-speed train</strong>, and a world away from the Marrakech gauntlet. Summers get properly hot, and touts still work the medina, but the pressure's a fraction of what you'll endure elsewhere.</p><p><strong>Our tip: </strong>mint tea at <a href=\"https://www.tripadvisor.com/Restaurant_Review-g293736-d24063516-Reviews-Cafe_Maure-Rabat_Rabat_Sale_Kenitra.html\" target=\"_blank\" rel=\"noopener\">Café Maure</a> in the Oudaïas.</p>",
+    "image": "images/rabat.jpeg",
+    "slug": "rabat"
+  },
+  {
+    "name": "Santiago",
+    "country": "Chile",
+    "lat": -33.4489,
+    "lng": -70.6693,
+    "blurb_html": "<p>Santiago doesn't get much attention from travellers, and that's partly because Chileans everywhere else tend to describe it as \"ugly\" or \"boring\". Which is music to our <em>orejas</em>!</p><p>Besides the <strong>spectacular mountain setting</strong> (see photo), Santiago is cleaner, safer, and easier to navigate than most other major cities in South America. It has amazing <strong>green spaces</strong>, and it isn't far from the coast (in summer) or from ski resorts like <strong>Farellones</strong> (in winter).</p><p>Our tip: head to <a href=\"https://www.google.com/maps/place/Juan+y+Medio/@-33.4323213,-70.6240959,831m/data=!3m2!1e3!4b1!4m6!3m5!1s0x9662c587c81983b3:0x4e5c37da8e08f0ad!8m2!3d-33.4323213!4d-70.6240959!16s%2Fg%2F11cm1bkfx9?entry=ttu&g_ep=EgoyMDI1MDUxMi4wIKXMDSoASAFQAw%3D%3D\" target=\"_blank\" rel=\"noopener\">Juan y Medio</a> in Providencia for some truly excellent Chilean food, including the classic <em>pastel de choclo</em> (corn pie).</p>",
+    "image": "images/santiago.jpeg",
+    "slug": "santiago"
+  },
+  {
+    "name": "Kristiansand",
+    "country": "Norway",
+    "lat": 58.1599,
+    "lng": 7.9956,
+    "blurb_html": "<p>Located at the southern tip of Norway, <strong>Kristiansand</strong> manages to both quaint and cosmopolitan.</p><p>Its old town, Posebyen, features the largest cluster of <strong>historic wooden houses</strong> in Northern Europe – which is what you'll see featured in many photos of the city. On one of the many sunny days (compared to the rest of Norway), the seaside is incredibly attractive – <strong>Hamresanden</strong> is especially worth visiting if you like beach strolls.</p><p>Another nice way to spend a morning is to take a ferry to one of the nearby islands – or even hire a boat and sail along the coast.</p><p><strong>Our tip:</strong> to fully embrace the maritime theme, get a table by the water and enjoy some fresh seafood at <a href=\"https://www.sjohuset.no/\" target=\"_blank\" rel=\"noopener\">Sjøhuset</a>.</p>",
+    "image": "images/kristiansand.jpeg",
+    "slug": "kristiansand"
+  },
+  {
+    "name": "Otaru",
+    "country": "Japan",
+    "lat": 43.1907,
+    "lng": 140.9947,
+    "blurb_html": "<p>There's a particular type of city curse that we call \"<em>a pretty good city, on the way to somewhere more exciting</em>\".</p><p><strong>Otaru</strong> is a prime example.</p><p>Most people will pass through Otaru \"anticipating pow in Niseko\" or \"heading back to Sapporo\" but it deserves <strong>at least</strong> a night for itself.</p><p>It's not just the picturesque canal, it's the <a href=\"https://stoneandiron.jp/en/\" target=\"_blank\" rel=\"noopener\">coffee shops</a> hidden in old warehouses. It's the way the streets run gently downhill all the way from the train station to the sea, it's the snow piled head-high on the side of every road.</p><p><strong>Our tip:</strong> even if Otaru's not on your way to somewhere, the coastal train from Sapporo is worth it alone - and easily done as a day trip.</p>",
+    "image": "images/otaru.jpeg",
+    "slug": "otaru"
+  },
+  {
+    "name": "Kuala Terengganu",
+    "country": "Malaysia",
+    "lat": 5.3117,
+    "lng": 103.1324,
+    "blurb_html": "<p>Here's a sentence you won't read often: <strong>Kuala Terengganu</strong> has better food than Penang.</p><p>We said it. The <strong>nasi dagang</strong> alone justifies the flight.</p><p>Sitting where the Terengganu River flows into the South China Sea, K.T. is what happens when <strong>traditional Malay culture</strong> remains undiluted by the demands of tourism. Wooden boats crowd the waterfront, the Central Market sells <em>actual</em> batik, and the mosques are focused on pleasing local worshippers instead of the 'gram.</p><p><strong>Our tip:</strong> the <a href=\"https://www.tti.com.my/crystal-mosque/\" target=\"_blank\" rel=\"noopener\">Crystal Mosque</a> looks like a prop from a sci-fi film. Worth the detour even if religious architecture isn't usually your thing. Go at sunset.</p>",
+    "image": "images/kuala-terengganu.jpeg",
+    "slug": "kuala-terengganu"
+  },
+  {
+    "name": "Bucharest",
+    "country": "Romania",
+    "lat": 44.4268,
+    "lng": 26.1025,
+    "blurb_html": "<p>Communist brutalism meets belle époque grandeur meets nobody-asked-for-your-opinion-about-urban-planning.</p><p>That's <strong>Bucharest.</strong></p><p>The Palace of Parliament is the <strong>world's heaviest building</strong>, which tells you everything about Ceaușescu's priorities.</p><p>But look past the concrete and you'll find art nouveau gems in Cotroceni, Berlin-level nightlife, and the <strong>decayed elegance</strong> of the Lipscani district.</p><p>It's genuinely rough around the edges. Which is <strong>exactly</strong> why it works.</p><p><strong>Our tip:</strong> <a href=\"https://www.carucubere.ro/\" target=\"_blank\" rel=\"noopener\">Caru' cu Bere</a> looks touristy as hell (gothic Revival interiors, oh yes) but the <em>sarmale</em> and <em>mici</em> are the real deal.</p>",
+    "image": "images/bucharest.jpeg",
+    "slug": "bucharest"
+  },
+  {
+    "name": "Praia",
+    "country": "Cabo Verde",
+    "lat": 14.9331,
+    "lng": -23.5133,
+    "blurb_html": "<p>If you're reading this from Sal or Boa Vista's beach resorts, we have bad news: you're in the <strong>wrong place</strong>.</p><p><strong>Praia</strong> sprawls across a plateau above the Atlantic, off the coast of West Africa. You'll sometimes hear people complain about it being boring, but it depends on what you're hoping to get out of your time in Cabo Verde. If all you need is relaxation at a resort, you can skip Praia – but if you want to understand local culture and history, it's <em>the</em> spot.</p><p>Down at Quebra Canela, you can swim alongside people finishing their workday while <strong>fishing boats</strong> roll in. It's hot, dusty, and unforgettable.</p><p><strong>Our tip:</strong> track down live <em>morna</em> at <a href=\"https://www.facebook.com/quintaldamusica/\" target=\"_blank\" rel=\"noopener\">Quintal da Música</a>. Bring your grogue tolerance.</p>",
+    "image": "images/praia.jpeg",
+    "slug": "praia"
+  },
+  {
+    "name": "Tampere",
+    "country": "Finland",
+    "lat": 61.4978,
+    "lng": 23.761,
+    "blurb_html": "<p>While Helsinki soaks up all the Nordic design tourism and Lapland gets the Northern Lights crowd, <strong>Tampere</strong> sits quietly between two lakes, officially holding the (glorious) title: <em>Sauna Capital of the World</em>.</p><p>And we're not talking about a few hotel spas. We're talking 60+ public saunas, including Rajaportti – Finland's oldest still in operation since 1906 – and waterfront spots like Rauhaniemi where locals jump straight from the steam into the lake. Year-round. Yes, <strong>even when it's frozen</strong>.</p><p>Beyond the sauna pilgrimage, Tampere has red-brick industrial charm (it's nicknamed the \"Manchester of the North\", which, well, OK), <strong>excellent doughnuts</strong> at Pyynikki Observation Tower, and a walkable city center. What more could you want?!?!</p><p><strong>Our tip:</strong> head to Sauna Restaurant Kuuma on Lake Pyhäjärvi for the full experience: Nordic food, rooftop views, and of course, more saunas.</p>",
+    "image": "images/tampere.jpeg",
+    "slug": "tampere"
+  },
+  {
+    "name": "Accra",
+    "country": "Ghana",
+    "lat": 5.6037,
+    "lng": -0.187,
+    "blurb_html": "<p><strong>Accra</strong> doesn't get the safari crowds that East Africa pulls, but Ghana's capital is one of West Africa's most genuinely underrated cities – and we haven't even <em>mentioned</em> the beaches yet.</p><p>Markets like Makola give chaotic energy, the nightlife at Labadi Beach runs until dawn, and <strong>jollof rice arguments</strong> get serious (Ghanaians claim theirs is better than Nigeria's, and we aren't brave enough to make a comment either way).</p><p>But what really sets Accra apart is how accessible it is. English is widely spoken, it's safer than most African capitals, and the growing <strong>tech scene</strong> means you'll pull decent wifi at traditional drumming performances.</p><p><strong>Our tip:</strong> skip the standard restaurants and head to <strong>Buka</strong> for proper West African food. The banku with tilapia and egusi soup are the go.</p>",
+    "image": "images/accra.jpeg",
+    "slug": "accra"
+  },
+  {
+    "name": "Samaipata",
+    "country": "Bolivia",
+    "lat": -18.1798,
+    "lng": -63.8732,
+    "blurb_html": "<p><strong>Samaipata</strong> is a bohemian mountain village nestled in Bolivia's foothills – only three hours from Santa Cruz, but a world apart in terms of climate.</p><p>Most people come for El Fuerte, a UNESCO World Heritage site with Bolivia's largest pre-Inca ruins – an enormous carved rock temple that predates the Incas by over a thousand years. But they end up staying for the vineyards, the waterfalls, the expat-run cafes, and the subtle but inescapable sense that <strong>time moves differently here.</strong></p><p>It's small enough to walk end-to-end in twenty minutes, international enough to have excellent <strong>Turkish street food</strong>, and off-the-beaten-track enough that you can still find handmade jewelry in artisan shops that's actually legit, not \"handmade\" by \"artisans\".</p><p><strong>Our tip:</strong> grab a shawarma or burger at <strong>La Cocina.</strong> Turkish owner Serdar bakes the bread fresh daily and it has a rep as the best in Bolivia.</p>",
+    "image": "images/samaipata.jpeg",
+    "slug": "samaipata"
+  },
+  {
+    "name": "Tétouan",
+    "country": "Morocco",
+    "lat": 35.5889,
+    "lng": -5.3626,
+    "blurb_html": "<p>The traveller to Morocco usually experiences the country in three phases: the honeymoon phase, followed by borderline rage, then finally an almost reluctant love – usually sparked by visiting underrated cities like <strong>Tétouan</strong>.</p><p>After being welcomed by <strong>gleaming whitewashed villas</strong> nestled between the Rif mountains and Alboran Sea, you'll soon understand that Tétouan's beauty is more than skin-deep.</p><p>After the Christian reconquest of Al-Andalus, many of the region's Arabs fled their homes in Granada and resettled in Tétouan – which partly explains the <strong>abundance of orange trees and marble fountains</strong>, and the similarity to the Pueblos Blancos of Andalusia.<a href=\"https://artofwayfaring.com/destinations/the-phrygian-valley/\" target=\"_blank\" rel=\"noopener\">​</a></p><p><strong>Our tip: </strong>head to the UNESCO-listed <a href=\"https://whc.unesco.org/en/list/837/\" target=\"_blank\" rel=\"noopener\">Medina</a>, and – as we so often suggest – wander without a destination in mind.</p>",
+    "image": "images/tétouan.jpeg",
+    "slug": "tétouan"
+  },
+  {
+    "name": "The Three Cities",
+    "country": "Malta",
+    "lat": 35.8876,
+    "lng": 14.5186,
+    "blurb_html": "<p>OK – <strong>Vittoriosa</strong>, <strong>Senglea</strong>, and <strong>Cospicua</strong> are <em>technically </em>multiple cities, but the point is that they're not Valletta.</p><p>Somehow, despite being a short dgħajsa ride across Grand Harbour, they've managed to escape the cruise-ship throngs and retain their <strong>old-world charm</strong>.</p><p>At sunrise, as you navigate the labyrinthine streets between the fortifications, you'll notice that all the limestone façades are bathed in a golden light. Leaving you no choice but to kick off your day with a <strong>pastizzi and Maltese coffee</strong> while watching the world go by.</p><p>Rude not to, really. <strong> </strong> <strong>Our tip:</strong> if you like seafood, head to <a href=\"https://www.tripadvisor.com/Restaurant_Review-g1748965-d10395519-Reviews-Le_Poisson_Fresh_Fish_Take_Away-Cospicua_Bormla_Island_of_Malta.html\" target=\"_blank\" rel=\"noopener\">Le Poisson</a> for what some would argue is the most delicious fish in Europe.</p>",
+    "image": "images/the-three-cities.jpeg",
+    "slug": "the-three-cities"
+  },
+  {
+    "name": "Ishigaki",
+    "country": "Japan",
+    "lat": 24.3448,
+    "lng": 124.1572,
+    "blurb_html": "<p>Find Japan on a map. Now head south and slightly west, into the ocean. Keep going, you're only at Toshima! Oh, you <em>finally</em> made it to Okinawa? KEEP GOING.</p><p>Eventually, just before you hit Taiwan, you're going to find <strong>Ishigaki</strong>. You're still in Japan, but this ain't Kyoto – floral shirts, folk music, and golden beaches are the vibe.</p><p>You can circumnavigate the island in as little as three hours, but there's enough here to keep you going at least a couple of weeks – and that's before you start <strong>taking ferries</strong> to smaller islands even further out.</p><p>If nothing else, it's worth the flight just for the local <strong>wagyu sushi</strong> and sweet potato tempura nom nom nom nom nom.</p><p><strong>Our tip: </strong>at the very westernmost point of Japan, there's a cafe with the unbelievably excellent name \"<a href=\"https://maps.app.goo.gl/hTzUjh6j7PQAdbCb8\" target=\"_blank\" rel=\"noopener\">Moist Roll Cafe</a>\". Go there and eat a moist roll, even if it means taking the <a href=\"https://soranews24.com/2021/11/18/a-trip-to-hell-on-japans-vomit-ship-is-it-as-bad-as-everyone-says-it-is/\" target=\"_blank\" rel=\"noopener\">Vomit Ship</a> from Ishigaki.</p>",
+    "image": "images/ishigaki.jpeg",
+    "slug": "ishigaki"
+  },
+  {
+    "name": "Windhoek",
+    "country": "Namibia",
+    "lat": -22.5609,
+    "lng": 17.0658,
+    "blurb_html": "<p>The most common crime committed against <strong>Windhoek</strong> is only spending one night before bolting for Etosha or the Namib Desert. Understandable, because those landscapes will rearrange your brain. But this small city rewards those who just stop and breathe for a day or two.</p><p>On foot, it's easy to navigate: German colonial buildings and a Lutheran church that looks like a fairytale prop (<strong>Christuskirche</strong>), sitting incongruously in the middle of southern Africa. The <strong>Independence Memorial Museum</strong> is your essential orientation point. And a guided walk through the township of <strong>Katutura</strong> will tell you more about this country's recent history than any guidebook.</p><p>It's not a buzzing metropolis, sure, but it's not just a transit point either.</p><p><strong>Our tip: </strong>skip the tourist-focused beer halls and eat<strong> kapana</strong> at the <a href=\"https://share.google/BKitlSvu2MrLJf6PV\" target=\"_blank\" rel=\"noopener\">Oshetu Community Market</a>. Grilled meat, open fire, no fuss.</p>",
+    "image": "images/windhoek.jpeg",
+    "slug": "windhoek"
+  },
+  {
+    "name": "Sacramento",
+    "country": "USA",
+    "lat": 38.5816,
+    "lng": -121.4944,
+    "blurb_html": "<p>Capital of California. Should be one of the more prestigious addresses in America. Instead, the rest of the state treats it as a vaguely embarrassing government town best driven through, at speed, on the I-5.</p><p>Here's the thing: <strong>Sacramento is California's actual larder</strong>. At the heart of the <strong>Central Valley</strong>, it's become America's <strong>Farm-to-Fork Capital</strong>, and the claim holds up. Chefs here change their menus based on what arrived from the fields that morning, which sounds like marketing until you experience it.</p><p>The bones are solid too: walkable Midtown streets, <strong>Gold Rush</strong> history in Old Sacramento. It just, well, dies later at night. But that's OK.</p><p><strong>Our tip: </strong><a href=\"https://frankfats.com/\" target=\"_blank\" rel=\"noopener\">Frank Fat's</a> has served Chinese-American classics on K Street since 1939. Order the banana cream pie. No argument pls.</p>",
+    "image": "images/sacramento.jpeg",
+    "slug": "sacramento"
+  },
+  {
+    "name": "Birgunj",
+    "country": "Nepal",
+    "lat": 27.0104,
+    "lng": 84.877,
+    "blurb_html": "<p>There's not much in <strong>Birgunj</strong> for the itinerary-minded traveller. It's a <strong>trading town on the Nepal-India border</strong>, flat and busy, and most people passing through are there to move goods, not take photos.</p><p>The people of Birgunj, though, are worth the detour. Walk any street and you'll see shopkeepers waving at friends on passing rickshaws, beckoning them in for tea. At <a href=\"https://maps.app.goo.gl/GhTF32wmjeohppXF7\" target=\"_blank\" rel=\"noopener\">Balaji Tea Shop</a>, the founder's sons still brew hot milk tea in single-use terracotta cups.</p><p>The town, improbably, also has a <strong>Toastmasters club</strong>(!) that meets Thursday afternoons and welcomes drop-ins. All of which tells you something about what this place is <em>really</em> like.</p><p><strong>Our tip:</strong> the rasmalai at <a href=\"http://maps.app.goo.gl/LBbrbVHAxr4EkKYw8\" target=\"_blank\" rel=\"noopener\">Mijbaani Sweets</a> is, by local consensus, the best in the valley. A family business, generations deep.</p><p><em>(thanks for the recs, <a href=\"https://www.gyulasimonyi.com/\" target=\"_blank\" rel=\"noopener\">Gyula</a>!)</em></p>",
+    "image": "images/birgunj.jpeg",
+    "slug": "birgunj"
+  },
+  {
+    "name": "Wrocław",
+    "country": "Poland",
+    "lat": 51.1079,
+    "lng": 17.0385,
+    "blurb_html": "<p>Despite the image above giving a 'liminal spaces' vibe, <strong>Wrocław</strong> is full of life – about 20% of the 675,000 population are students.</p><p>And despite being one of the last cities to fall in the Second World War, with parts of the central city being destroyed to build an evacuation airfield, there's plenty of <strong>historic architecture</strong> to go around.</p><p>Assuming you're avoiding the (very cold) winter and keen to lounge around outdoors, there are also <strong>44 parks</strong> covering over 800 hectares (2,000 acres) spread across the city.</p><p><strong>Our tip:</strong> stroll the Odra river promenade on a warm evening. Boring, in a good way.</p>",
+    "image": "images/wrocław.jpeg",
+    "slug": "wrocław"
+  },
+  {
+    "name": "Lautoka",
+    "country": "Fiji",
+    "lat": -17.6163,
+    "lng": 177.4509,
+    "blurb_html": "<p>Even veteran travellers to Fiji don't exactly make a beeline for <strong>Lautoka</strong>, the country's third largest city. And to be fair, if you're only in Fiji for beaches and snorkelling, you can safely give it a miss. But Lautoka has an energy and charm that make it a microcosm of Fiji's overall appeal.</p><p>Its <strong>majority Indian population</strong> – a relic of the colonial era, when Britain brought in extra workers for the sugarcane plantations – makes the city feel a bit like a miniature Kanpur in the South Pacific.</p><p>Wander aimlessly along the bustling yet tidy streets, lingering to chat with friendly shopkeepers – then cool down with some <strong>fresh mangoes</strong> from the atmospheric indoor vegetable market.</p><p><strong>Our tip:</strong> grab one of Fiji's best thalis at the <a href=\"https://maps.app.goo.gl/sF8M8ZtwZtK7RUhS9\" target=\"_blank\" rel=\"noopener\">South Seas Restaurant</a>.</p>",
+    "image": "images/lautoka.jpeg",
+    "slug": "lautoka"
+  },
+  {
+    "name": "Dakar",
+    "country": "Sénégal",
+    "lat": 14.7167,
+    "lng": -17.4677,
+    "blurb_html": "<p>Situated at the westernmost tip of Africa, and surrounded on three sides by the Atlantic, <strong>Dakar</strong> has a truly maritime feel. Despite having all the congestion and urban sprawl that you'd expect from a capital city, it's managed to keep its soul alive.</p><p>To experience that soul in all its guises, you'll need to catch a ferry to the island of <strong>Gorée</strong>: it's a 20-minute sailing that takes you back 200 years. Completely free of cars, Gorée's salt-lashed colonial edifices point to a darker side of West African history: the <strong>transatlantic slave trade</strong>. Beyond the confronting physical experience, you can also explore the academic controversy surrounding the infamous \"Door of No Return\".</p><p>As you catch the sunset ferry back to Dakar, you'll have a new understanding of the post-colonial African city that you're returning to.</p><p><strong>Our tip: </strong>try <a href=\"https://en.wikipedia.org/wiki/Thieboudienne\" target=\"_blank\" rel=\"noopener\">thieboudienne</a>, the national dish of rice and fish which remains a symbol of Senegalese hospitality.</p>",
+    "image": "images/dakar.jpeg",
+    "slug": "dakar"
+  },
+  {
+    "name": "St John's",
+    "country": "Newfoundland",
+    "lat": 47.5615,
+    "lng": -52.7126,
+    "blurb_html": "<p>Aside from a few rowdy Canadians sure to blow up our inboxes with deep (but polite) rage, we think you'll agree this one is a true underrated city – if only because you've <strong>never heard of it.</strong></p><p>With all the charms of a small town, but enough happening to keep you occupied for a month or three, <strong>St John's</strong> is a European-feeling Canadian gem facing the wild, wild Atlantic.</p><p>And if you're outdoorsy, you might end up 'trapped' in Newfoundland – from city-edge hikes, to deep pow in Corner Brook, to truly remote national parks, there's a<strong> lifetime of adventure</strong> waiting to lure you in.</p><p><strong>Our tip: <a href=\"https://maps.app.goo.gl/khnnkYvcwjd4FqJb6\" target=\"_blank\" rel=\"noopener\">Gros Morne National Park</a> is absolutely incredible (and also happens to be a scene in the 2006 Minaal Origins road trip)</strong></p>",
+    "image": "images/st-johns.jpeg",
+    "slug": "st-johns"
+  },
+  {
+    "name": "Chengdu",
+    "country": "China",
+    "lat": 30.5728,
+    "lng": 104.0668,
+    "blurb_html": "<p>Pop quiz: <strong>Chengdu</strong> has over 21M people, is China's 4th-largest city – yet could you locate it on a map?</p><p>I ask that with zero judgement – kinda ironically, geography is not a personal strong point – but the point is that China's <strong>immense size</strong> and flashy eastern cities tend to obscure some smaller(!) gems.</p><p>Chengdu is closer to Tibet than to the coast. You're probably more familiar with the province it sits inside, <strong>Sichuan</strong> – home of the delicious-but-a-bit-disconcerting-feeling pepper.</p><p>You'll get more of an old-school China vibe compared to Shanghai and Beijing, relatively better access to nature, and oh maaaaan – <strong>the food</strong>.</p><p><strong>Our tip:</strong> <a href=\"https://www.siftandsimmer.com/wp-content/uploads/2018/06/healthier-sichuan-style-guo-kui4-683x1024.jpg\" target=\"_blank\" rel=\"noopener\">Guo kui</a> (酥饼) – just hurry up and eat it and thank me later.</p>",
+    "image": "images/chengdu.jpeg",
+    "slug": "chengdu"
+  },
+  {
+    "name": "Tbilisi",
+    "country": "Georgia",
+    "lat": 41.7151,
+    "lng": 44.8271,
+    "blurb_html": "<p>Located on a historical crossroads between Europe and Asia, <strong>Tbilisi</strong> retains a ton of its <strong>old-school</strong> <strong>charm</strong> despite having endured a long period of Soviet rule.</p><p>Its food and architecture blend Turkish, Persian, Armenian and Russian influences. In its old town – beneath a <strong>crumbling hilltop fortress</strong> – a mosque, synagogue, and Orthodox church stand practically side by side.</p><p>Our tip: visit the <strong>National Botanical Garden</strong>, very much an underrated attraction inside an underrated city.</p>",
+    "image": "images/tbilisi.jpeg",
+    "slug": "tbilisi"
+  },
+  {
+    "name": "Chiang Mai",
+    "country": "Thailand",
+    "lat": 18.7883,
+    "lng": 98.9853,
+    "blurb_html": "<p>Ok, ok – it's a bit controversial to call <strong>Chiang Mai</strong> \"underrated\" when it's one of the most popular destinations in Asia. But there's a growing hot take among Asia explorers that Chiang Mai is <em>overrated</em>, and we disagree<em>.</em></p><p>Yeah, it's packed with down-dog-doing, chakra-balancing digital nomads and other tourists. Yes, it's easy to get jaded if you're there too long. But when you get away from the tourist traps, it remains a truly wonderful little city: <strong>world-class food</strong>, leafy and peaceful lanes, and a cosmopolitan vibe.</p><p><strong>Our tip:</strong> hike up the forested mountain trail to Wat Pha Lat, then catch a <em>songthaew</em> to Doi Pui Hmong village.</p>",
+    "image": "images/chiang-mai.jpeg",
+    "slug": "chiang-mai"
+  },
+  {
+    "name": "Fukuoka",
+    "country": "Japan",
+    "lat": 33.5904,
+    "lng": 130.4017,
+    "blurb_html": "<p>Walking around <strong>Fukuoka</strong>, you wouldn't pick it to be Japan's sixth-largest city.</p><p>A compact downtown, accessible parks, and (personal obsession alert) an airport within 10min(!) of the city center gives it a <strong>snug vibe</strong>.</p><p>On top of that, geography and a forward-thinking city hall have combined to encourage an <strong>energetic subculture</strong> of entrepreneurs and immigrants.</p><p><strong>Our tip:</strong> indulge – repeatedly, joyously, excessively – in Japan's best (and some would argue, only) <em>yatai</em> street food culture.</p>",
+    "image": "images/fukuoka.jpeg",
+    "slug": "fukuoka"
+  },
+  {
+    "name": "Jodhpur",
+    "country": "India",
+    "lat": 26.2389,
+    "lng": 73.0243,
+    "blurb_html": "<p>The state of Rajasthan is famous, as is its capital Jaipur and lakeside city Udaipur.</p><p>But another Rajasthani city, <strong>Jodhpur</strong>, is more widely known by equestrians (thanks to the eponymous riding pants) than it is among most explorers.</p><p>That's a shame: Jodhpur's 15th-century <strong>Mehrangarh Fort</strong> is one of the most impressive historical sites in Asia. Scale the walls, see the Blue City unfolding in front you, and try to spot all the lanes and rooftops you explored earlier.</p><p><strong>Our tip:</strong> wander the labyrinthine streets below the fort at sunset, and you might be invited to join a game of alleyway cricket.</p><p>Need a bag before you hit the road?</p><p>We've got you, with <strong>free shipping</strong> on orders over $400 to 60+ countries: <a href=\"https://www.minaal.com/collections/bags\" target=\"_blank\" rel=\"noopener\">SHOP BAGS</a></p>",
+    "image": "images/jodhpur.jpeg",
+    "slug": "jodhpur"
+  }
+];
+
+// --- Map setup ---
+const worldBounds = L.latLngBounds([[-70, -170], [80, 190]]);
+const map = L.map('map', {
+  zoomControl: false,
+  attributionControl: true,
+  minZoom: 3,
+  maxBounds: worldBounds,
+  maxBoundsViscosity: 1.0
+}).setView([25, 15], 3);
+
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19,
+  noWrap: true
+}).addTo(map);
+
+// Fit map to show all cities with padding
+const bounds = L.latLngBounds(CITIES.map(c => [c.lat, c.lng]));
+map.fitBounds(bounds, { padding: [50, 50] });
+
+// --- Markers ---
+const markers = [];
+let activeMarker = null;
+
+CITIES.forEach((city, i) => {
+  const icon = L.divIcon({
+    className: 'city-marker-wrapper',
+    html: '<div class="city-marker" data-index="' + i + '"></div>',
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
+  });
+
+  const marker = L.marker([city.lat, city.lng], { icon })
+    .addTo(map)
+    .on('click', () => openCity(i));
+
+  marker.bindTooltip(city.name, {
+    direction: 'top',
+    offset: [0, -8],
+    className: 'city-tooltip'
+  });
+
+  markers.push(marker);
+});
+
+// --- City list ---
+const listUl = document.getElementById('city-list-ul');
+const sortedCities = CITIES.map((c, i) => ({ ...c, idx: i }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+sortedCities.forEach(city => {
+  const li = document.createElement('li');
+  li.innerHTML = city.name + ' <span class="list-country">' + city.country + '</span>';
+  li.addEventListener('click', () => {
+    openCity(city.idx);
+    document.getElementById('city-list').classList.remove('open');
+  });
+  listUl.appendChild(li);
+});
+
+document.getElementById('counter').textContent = CITIES.length;
+
+document.getElementById('city-list-toggle').addEventListener('click', () => {
+  document.getElementById('city-list').classList.toggle('open');
+});
+
+map.on('click', () => {
+  document.getElementById('city-list').classList.remove('open');
+});
+
+// --- Throw a dart ---
+document.getElementById('dart-btn').addEventListener('click', () => {
+  const randomIndex = Math.floor(Math.random() * CITIES.length);
+  document.getElementById('city-list').classList.remove('open');
+  openCity(randomIndex);
+});
+
+// --- Panel ---
+function openCity(index) {
+  const city = CITIES[index];
+  const panel = document.getElementById('panel');
+  const img = document.getElementById('panel-image');
+
+  // Image
+  if (city.image) {
+    img.src = city.image;
+    img.alt = city.name + ', ' + city.country;
+    img.classList.remove('hidden');
+  } else {
+    img.classList.add('hidden');
+  }
+
+  document.getElementById('panel-city').textContent = city.name;
+  document.getElementById('panel-country').textContent = city.country;
+  document.getElementById('panel-body').innerHTML = city.blurb_html;
+
+  // Reset scroll
+  document.getElementById('panel-scroll').scrollTop = 0;
+
+  // Highlight active marker
+  if (activeMarker !== null) {
+    markers[activeMarker].getElement().querySelector('.city-marker').classList.remove('active');
+  }
+  markers[index].getElement().querySelector('.city-marker').classList.add('active');
+  activeMarker = index;
+
+  panel.classList.add('open');
+
+  // Pan map: place the city at the center of the visible area (left of panel)
+  const targetZoom = Math.max(map.getZoom(), 5);
+  const panelWidth = panel.offsetWidth;
+  const mapWidth = map.getContainer().offsetWidth;
+  // On mobile the panel covers everything — no offset needed
+  const offset = panelWidth >= mapWidth ? 0 : panelWidth / 2;
+  const cityPoint = map.project([city.lat, city.lng], targetZoom);
+  const offsetCenter = map.unproject([cityPoint.x + offset, cityPoint.y], targetZoom);
+  map.setView(offsetCenter, targetZoom, { animate: true, duration: 0.4 });
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+  if (activeMarker !== null) {
+    markers[activeMarker].getElement().querySelector('.city-marker').classList.remove('active');
+    activeMarker = null;
+  }
+}
+
+document.getElementById('close-btn').addEventListener('click', closePanel);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closePanel();
+    document.getElementById('city-list').classList.remove('open');
+  }
+});
+</script>
+</body>
+</html>
