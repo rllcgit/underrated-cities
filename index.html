@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -79,6 +80,7 @@
   #panel-scroll {
     overflow-y: auto;
     flex: 1;
+    -webkit-overflow-scrolling: touch;
   }
 
   #panel-image {
@@ -502,7 +504,7 @@ const CITIES = [
     "country": "Egypt",
     "lat": 30.0444,
     "lng": 31.2357,
-    "blurb_html": "<p><strong>Let's start by acknowledging that many of the negatives people mention aren't wrong. Yeah, you'll be <strong>harassed by children on camels</strong>. Asked for baksheesh. Feel unwelcome in certain areas as a woman, even when veiled.</strong></p><p><strong>But – and OK, it's a large but – if your spirit of adventure can overpower the shabbier aspects of Cairo, you might find it's <strong>one of the most fascinating cities</strong> you've ever visited. </strong></p><p><strong>Where else can you roam freely past sphinxes and pyramids, stroll along the Nile after lunch, and get lost in the sprawling markets and minarets of an area like Old Cairo? Unlike Pompeii or the Acropolis, Cairo offers a <strong>living history</strong> – not fully free from risk, but uniquely captivating for a certain kind of person.</strong></p><p><strong><strong>Our tip: </strong>don't go there expecting simple beauty. Make a plan. Be prepared for the rough edges.</strong></p>",
+    "blurb_html": "<p>Let's start by acknowledging that many of the negatives people mention aren't wrong. Yeah, you'll be <strong>harassed by children on camels</strong>. Asked for baksheesh. Feel unwelcome in certain areas as a woman, even when veiled.</p><p>But – and OK, it's a large but – if your spirit of adventure can overpower the shabbier aspects of Cairo, you might find it's <strong>one of the most fascinating cities</strong> you've ever visited.</p><p>Where else can you roam freely past sphinxes and pyramids, stroll along the Nile after lunch, and get lost in the sprawling markets and minarets of an area like Old Cairo? Unlike Pompeii or the Acropolis, Cairo offers a <strong>living history</strong> – not fully free from risk, but uniquely captivating for a certain kind of person.</p><p><strong>Our tip: </strong>don't go there expecting simple beauty. Make a plan. Be prepared for the rough edges.</p>",
     "image": "images/cairo.jpeg",
     "slug": "cairo"
   },
@@ -583,7 +585,7 @@ const CITIES = [
     "country": "Austria",
     "lat": 47.2692,
     "lng": 11.4041,
-    "blurb_html": "<p><strong>Vienna gets all the buzz, but <strong>Innsbruck</strong>, nestled in Austria's mountainous Tyrol region, is very much the dashing younger sibling. It's equally spectacular in winter (skiing, ski jumping, biathlon, Glühwein) and summer (alpine hikes, fresh air, meadows so green you simply cannot avoid humming Edelweiss).</strong></p><p><strong>The cable car up to the <strong>Hafelekar</strong> is a good way to start – and probably just the pick-me-up you need after all that self-analysis at Vienna's Sigmund Freud Museum.</strong></p><p><strong><strong>Our tip: </strong>take the <a href=\"https://www.seat61.com/trains-and-routes/munich-to-innsbruck-by-train.htm\" target=\"_blank\" rel=\"noopener\">train north</a> to Munich, or drive south through the Brenner to Sterzing. Either way, you're rewarded with unforgettable views.</strong></p>",
+    "blurb_html": "<p>Vienna gets all the buzz, but <strong>Innsbruck</strong>, nestled in Austria's mountainous Tyrol region, is very much the dashing younger sibling. It's equally spectacular in winter (skiing, ski jumping, biathlon, Glühwein) and summer (alpine hikes, fresh air, meadows so green you simply cannot avoid humming Edelweiss).</p><p>The cable car up to the <strong>Hafelekar</strong> is a good way to start – and probably just the pick-me-up you need after all that self-analysis at Vienna's Sigmund Freud Museum.</p><p><strong>Our tip: </strong>take the <a href=\"https://www.seat61.com/trains-and-routes/munich-to-innsbruck-by-train.htm\" target=\"_blank\" rel=\"noopener\">train north</a> to Munich, or drive south through the Brenner to Sterzing. Either way, you're rewarded with unforgettable views.</p>",
     "image": "images/innsbruck.jpeg",
     "slug": "innsbruck"
   },
@@ -1251,6 +1253,11 @@ function closePanel() {
 }
 
 document.getElementById('close-btn').addEventListener('click', closePanel);
+
+// Prevent panel touch events from reaching the map (fixes mobile scroll reset)
+document.getElementById('panel').addEventListener('touchmove', (e) => {
+  e.stopPropagation();
+}, { passive: true });
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
