@@ -59,22 +59,24 @@
   #panel.open { transform: translateX(0); }
 
   #panel-close-row {
-    padding: 12px 16px 0;
+    padding: 0 16px;
+    height: 56px;
     display: flex;
+    align-items: center;
     justify-content: flex-start;
     flex-shrink: 0;
   }
 
   #close-btn {
-    background: none;
+    background: #B04228;
     border: none;
     cursor: pointer;
-    padding: 4px 8px 4px 0;
+    padding: 8px 14px;
     line-height: 1;
     border-radius: 4px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
 
   #close-btn .back-arrow {
@@ -88,10 +90,10 @@
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--ink);
+    color: #F0EFED;
   }
 
-  #close-btn:hover { opacity: 0.6; }
+  #close-btn:hover { opacity: 0.8; }
 
   #panel-scroll {
     overflow-y: scroll;
@@ -368,7 +370,7 @@
 
 <div id="panel">
   <div id="panel-close-row">
-    <button id="close-btn"><span class="back-arrow"><svg width="20" height="14" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 7H1M1 7L7 1M1 7L7 13" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="back-label">Back to map</span></button>
+    <button id="close-btn"><span class="back-arrow"><svg width="20" height="14" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 7H1M1 7L7 1M1 7L7 13" stroke="#F0EFED" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="back-label">Back to map</span></button>
   </div>
   <div id="panel-scroll">
     <img id="panel-image" class="hidden" src="" alt="" />
