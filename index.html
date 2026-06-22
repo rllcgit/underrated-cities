@@ -1233,6 +1233,12 @@ function openCity(index) {
 
   panel.classList.add('open');
 
+  // Disable map interaction so it doesn't intercept touch events on the panel (iOS Safari fix)
+  map.dragging.disable();
+  map.touchZoom.disable();
+  map.scrollWheelZoom.disable();
+  map.doubleClickZoom.disable();
+
   // Pan map: place the city at the center of the visible area (left of panel)
   const targetZoom = Math.max(map.getZoom(), 5);
   const panelWidth = panel.offsetWidth;
@@ -1250,6 +1256,11 @@ function closePanel() {
     markers[activeMarker].getElement().querySelector('.city-marker').classList.remove('active');
     activeMarker = null;
   }
+  // Re-enable map interaction
+  map.dragging.enable();
+  map.touchZoom.enable();
+  map.scrollWheelZoom.enable();
+  map.doubleClickZoom.enable();
 }
 
 document.getElementById('close-btn').addEventListener('click', closePanel);
