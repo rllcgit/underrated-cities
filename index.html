@@ -1255,8 +1255,31 @@ function closePanel() {
 document.getElementById('close-btn').addEventListener('click', closePanel);
 
 // Prevent panel touch events from reaching the map (fixes mobile scroll reset)
-document.getElementById('panel').addEventListener('touchmove', (e) => {
+const panelEl = document.getElementById('panel');
+const panelScroll = document.getElementById('panel-scroll');
+
+panelEl.addEventListener('touchmove', (e) => {
   e.stopPropagation();
+}, { passive: true });
+
+// Stronger fix for Brave and non-Safari iOS browsers:
+// track touch position and stop scroll events reaching the map
+let touchStartY = 0;
+panelScroll.addEventListener('touchstart', (e) => {
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+panelScroll.addEventListener('touchmove', (e) => {
+  const scrollTop = panelScroll.scrollTop;
+  const scrollHeight = panelScroll.scrollHeight;
+  const clientHeight = panelScroll.clientHeight;
+  const touchY = e.touches[0].clientY;
+  const direction = touchY - touchStartY;
+  const atTop = scrollTop === 0 && direction > 0;
+  const atBottom = scrollTop + clientHeight >= scrollHeight && direction < 0;
+  if (!atTop && !atBottom) {
+    e.stopPropagation();
+  }
 }, { passive: true });
 
 document.addEventListener('keydown', (e) => {
